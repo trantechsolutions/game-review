@@ -2,6 +2,16 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-11 — Switch to local encryption, public repo (f235f62..f235f62)
+
+**Why.** The repository is public on the free GitHub plan, and Pages cannot publish from a private repository without a paid plan. The first setup (2026-10-11, initial) committed readable pages and clips, so they were publicly visible for a short time.
+
+**Decision.** Encrypt on the coach's PC and commit only encrypted output. The password now lives in a local file on that PC instead of a GitHub secret. The repository history was replaced so the readable commit is no longer on any branch.
+
+**Risk.** GitHub can still serve the replaced commit to anyone who has its exact ID until it is purged. Full removal needs the repository deleted and recreated, or a GitHub Support request. If the PC is lost, the source pages and clips must be rebuilt from the original game folders.
+
+**Open.** Decide whether to delete and recreate the repo to purge the old commit. The `SITE_PASSWORD` Actions secret is no longer used and can be deleted.
+
 ## 2026-10-11 — Game film site launched (initial)
 
 **Delivered.** One password-protected site for the three games reviewed to date. Each has a play-by-play, coaches' breakdown, match report and 5–7 highlight clips (17 clips, about 300 MB in total).

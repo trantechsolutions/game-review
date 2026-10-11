@@ -2,6 +2,11 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-11 — Switch to local encryption, public repo (f235f62..f235f62)
+
+- Nothing changes for viewers. The site still asks for the same team password.
+- The site now gets ready on the coach's computer, and only the locked (encrypted) version is ever uploaded. That keeps the videos and reports private even though the project's storage on GitHub is public.
+
 ## 2026-10-11 — Game film site launched (initial)
 
 - All three games reviewed so far now live in one place: Krewe (3 Oct), HFC (10 Oct) and CSC Eagles (10 Oct).

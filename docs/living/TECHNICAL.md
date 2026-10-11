@@ -2,6 +2,14 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-11 — Switch to local encryption, public repo (f235f62..f235f62)
+
+- Moved `site/` to `private/site/` and `tools/highlights.json` to `private/highlights.json`. `private/` is gitignored, as is every `*.mp4`.
+- `tools/build.mjs`: outputs to `public/`. Password comes from `private/.site-password` or the `SITE_PASSWORD` env var. IV = HMAC-SHA256(HMAC(key, label), path ‖ 0 ‖ plaintext)[:12], so output is deterministic per content and never reuses an IV across different plaintexts. Gate page no longer names the team.
+- `.github/workflows/pages.yml`: no build step and no secret. It checks that `public/` holds only `.enc` files, encrypted gate pages and `assets/`, then deploys `public/`. Actions are bumped to checkout@v5 and upload-pages-artifact@v4.
+- History rewritten: an orphan commit replaces eb8657f, which contained plaintext under `site/`. Pages `build_type` was set to `workflow`, which stops the branch-root deploy that was serving `README.md` and raw clips.
+- Rollback: none recommended. Re-committing `private/` would republish plaintext.
+
 ## 2026-10-11 — Game film site launched (initial)
 
 **Added**
