@@ -9,6 +9,21 @@
     location.reload();
   }));
 
+  // Links in the source point at real paths (games/<slug>/play-by-play.html); the published
+  // files have opaque flat names. Map each link through the routes the build injected.
+  const ROUTES = window.DFC_ROUTES || {};
+  const SELF = window.DFC_SELF || "index.html";
+  const route = ref => {
+    if (!ref || /^(?:[a-z][a-z0-9+.-]*:|#|\/\/)/i.test(ref)) return null;
+    const url = new URL(ref, "https://site.invalid/" + SELF);
+    const name = ROUTES[decodeURIComponent(url.pathname.slice(1))];
+    return name ? name + url.hash : null;
+  };
+  document.querySelectorAll("a[href]").forEach(a => {
+    const to = route(a.getAttribute("href"));
+    if (to) a.setAttribute("href", to);
+  });
+
   let keyPromise;
   const key = () => keyPromise ??= (async () => {
     const raw = stored();
@@ -20,7 +35,7 @@
     button.disabled = true;
     button.textContent = "Loading…";
     try {
-      const res = await fetch(video.dataset.encSrc + ".enc");
+      const res = await fetch(route(video.dataset.encSrc) || video.dataset.encSrc);
       if (!res.ok) throw new Error(res.status);
       const data = new Uint8Array(await res.arrayBuffer());
       button.textContent = "Decrypting…";
