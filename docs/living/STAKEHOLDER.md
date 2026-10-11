@@ -2,6 +2,11 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-11 — Consistent layout after refresh and clip load (37396dd..37396dd)
+
+- The pages now look the same every time: right after you sign in, after a refresh, and after you press Load on a highlight. Nothing jumps around any more.
+- The Highlights button shows its play icon correctly.
+
 ## 2026-10-11 — Publish encrypted site with opaque names (c3fbaab..c3fbaab)
 
 - The game film site is back online behind the team password, with all three games, highlights and reports.

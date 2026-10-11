@@ -2,6 +2,13 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-11 — Consistent layout after refresh and clip load (37396dd..37396dd)
+
+- `tools/assets/unlock.js`: `show()` now waits for `DOMContentLoaded` before `document.open/write/close`. On the saved-key path the write ran during gate parsing, so it inserted into the gate document instead of replacing it. `gate.css` (`body{display:grid;place-items:center}`) stayed applied, which shifted the game list and sized highlight frames to their content until the video loaded.
+- `private/site/index.html`: the highlights icon `content` escape was a literal U+0015 control character; it is now `"B6"`.
+- Tests: a Playwright (Chrome) script ran login, measure, reload, measure, then highlights, measure, Load, measure. Body styles, stylesheets and element boxes were identical across login and refresh, and highlight frames stayed 550×367 before and after Load.
+- Rollback: `git revert` this commit, rebuild and push.
+
 ## 2026-10-11 — Publish encrypted site with opaque names (c3fbaab..c3fbaab)
 
 - `tools/build.mjs`: output is flat. Each file is named HMAC-SHA256(nameKey, source path)[:20] + `.html` or `.bin`; `index.html` keeps its name. A `DFC_ROUTES` map (source path → name) and `DFC_SELF` are injected into each page before encryption. Gate and asset URLs are root-relative to the flat folder.

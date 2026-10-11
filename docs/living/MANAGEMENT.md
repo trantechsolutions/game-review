@@ -2,6 +2,12 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-11 — Consistent layout after refresh and clip load (37396dd..37396dd)
+
+**Delivered.** Fixed a layout bug users saw on refresh and when loading highlight clips. This was a small, contained change to the unlock script, with no change to content or security.
+
+**Risk.** Low. Verified in Chrome by scripting login, refresh, navigation and clip load.
+
 ## 2026-10-11 — Publish encrypted site with opaque names (c3fbaab..c3fbaab)
 
 **Delivered.** The site is live again from the public repository on the free plan. Every page and clip is encrypted on the coach's PC, and file names no longer reveal games, opponents or players.
