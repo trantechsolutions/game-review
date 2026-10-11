@@ -1,0 +1,5 @@
+{
+  "_readme": "Key-derivation settings. The salt is not secret. Changing either value signs everyone out.",
+  "salt": "BCeYPZyGq8Fo0Bh9jV119A==",
+  "iterations": 600000
+}

@@ -1,0 +1,42 @@
+name: Deploy game film site
+
+# public/ is already encrypted on the coach's PC (tools/build.mjs); this only publishes it.
+on:
+  push:
+    branches: [main]
+    paths: ["public/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Refuse to publish anything unencrypted
+        run: |
+          test -f public/index.html || { echo "public/ is empty; run node tools/build.mjs and commit public/"; exit 1; }
+          bad=$(find public -type f ! -name '*.enc' ! -name '*.html' ! -path 'public/assets/*' ! -name robots.txt ! -name .nojekyll)
+          if [ -n "$bad" ]; then echo "Unexpected files in public/:"; echo "$bad"; exit 1; fi
+          if grep -L 'id="payload"' public/*.html public/games/*/*.html | grep .; then echo "Pages above are not encrypted"; exit 1; fi
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: public
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,17 @@
+# Everything readable lives here and never leaves this PC: report pages, clips,
+# highlights.json and the site password (.site-password).
+private/
+
+# Old build folder from the first setup.
+dist/
+
+# Full-game recordings and 5-minute working clips.
+*.mp4
+*.ts
+
+.env
+.env.*
+node_modules/
+__pycache__/
+Thumbs.db
+.DS_Store
