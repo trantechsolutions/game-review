@@ -24,7 +24,16 @@
     const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: payload.slice(0, 12) }, key, payload.slice(12));
     return new TextDecoder().decode(plain);
   }
-  function show(html) { document.open(); document.write(html); document.close(); }
+  // Replace the gate only once it has finished parsing. Writing while the gate is still loading
+  // (the saved-key path on refresh) merges the page into the gate instead of replacing it, so
+  // gate.css stays applied and the layout differs from a fresh login.
+  const parsed = new Promise(done => {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", done, { once: true });
+    else done();
+  });
+  function show(html) {
+    parsed.then(() => { document.open(); document.write(html); document.close(); });
+  }
 
   const gate = document.getElementById("gate");
   const form = document.getElementById("unlock");
