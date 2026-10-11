@@ -2,6 +2,14 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-11 — Publish encrypted site with opaque names (c3fbaab..c3fbaab)
+
+**Delivered.** The site is live again from the public repository on the free plan. Every page and clip is encrypted on the coach's PC, and file names no longer reveal games, opponents or players.
+
+**Decision.** Opaque file names were added after a review showed that clip names (for example a scorer's first name and minute) would have been public even though the contents were encrypted.
+
+**Risk.** Unchanged from the previous entry: password strength, the replaced commit reachable by exact ID until purged, and source files that exist only on the coach's PC.
+
 ## 2026-10-11 — Switch to local encryption, public repo (f235f62..f235f62)
 
 **Why.** The repository is public on the free GitHub plan, and Pages cannot publish from a private repository without a paid plan. The first setup (2026-10-11, initial) committed readable pages and clips, so they were publicly visible for a short time.

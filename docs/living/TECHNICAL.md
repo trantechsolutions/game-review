@@ -2,6 +2,14 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-11 — Publish encrypted site with opaque names (c3fbaab..c3fbaab)
+
+- `tools/build.mjs`: output is flat. Each file is named HMAC-SHA256(nameKey, source path)[:20] + `.html` or `.bin`; `index.html` keeps its name. A `DFC_ROUTES` map (source path → name) and `DFC_SELF` are injected into each page before encryption. Gate and asset URLs are root-relative to the flat folder.
+- `tools/assets/media.js`: resolves every `a[href]` and `video[data-enc-src]` against `DFC_SELF` and rewrites it through `DFC_ROUTES`.
+- `.github/workflows/pages.yml`: allows only `*.bin`, `*.html`, `assets/`, `robots.txt` and `.nojekyll`, requires a flat `public/`, and requires every page to carry an encrypted payload.
+- Tests: a WebCrypto decrypt of every page with the real password resolved 41 of 41 links and clips (0 broken). A sample clip round-trips byte-identical. A rebuild produces an identical git tree.
+- Rollback: `git revert` this commit, rebuild and push. Never commit `private/`.
+
 ## 2026-10-11 — Switch to local encryption, public repo (f235f62..f235f62)
 
 - Moved `site/` to `private/site/` and `tools/highlights.json` to `private/highlights.json`. `private/` is gitignored, as is every `*.mp4`.

@@ -2,6 +2,11 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-11 — Publish encrypted site with opaque names (c3fbaab..c3fbaab)
+
+- The game film site is back online behind the team password, with all three games, highlights and reports.
+- Even the names of the files on GitHub are now scrambled, so nobody can tell which games or players are on the site without the password.
+
 ## 2026-10-11 — Switch to local encryption, public repo (f235f62..f235f62)
 
 - Nothing changes for viewers. The site still asks for the same team password.
