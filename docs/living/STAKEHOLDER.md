@@ -2,6 +2,11 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-11 — Game 3 film added: DFC 2–1 BRSC (6d4893d..6d4893d)
+
+- Game 3 of the OLOL United Cup (Sunday 11 Oct, home vs BRSC) is now on the site. DFC won 2–1 with two goals from Maxx F.
+- It has a play-by-play, a coaches' breakdown, a match report and six highlight clips: both goals, the BRSC goal, a cut-back chance, a break that ended in a header, and a late save.
+
 ## 2026-10-11 — Consistent layout after refresh and clip load (37396dd..37396dd)
 
 - The pages now look the same every time: right after you sign in, after a refresh, and after you press Load on a highlight. Nothing jumps around any more.

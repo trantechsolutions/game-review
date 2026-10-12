@@ -2,6 +2,13 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-11 — Game 3 film added: DFC 2–1 BRSC (6d4893d..6d4893d)
+
+- `public/`: rebuilt with `node tools/build.mjs` (17 pages, 23 clips). 4 new pages and 6 new `.bin` clips for slug `2026-10-11-brsc`. 13 existing pages re-encrypted because the game list and routes changed.
+- Source (gitignored): `private/site/games/2026-10-11-brsc/` and a new entry in `private/highlights.json`. Clips were cut from `full_game.mp4`, each under 32 MB.
+- Checks: every clip linked from `highlights.html` exists, and no published file name contains readable text. `git grep -i brsc` hits one base64 run inside `public/25a33f0095a6df57ed8f.html` by chance; it is ciphertext, not a leak.
+- Rollback: `git revert 6d4893d` and push, or remove the game from `private/`, rebuild and push.
+
 ## 2026-10-11 — Consistent layout after refresh and clip load (37396dd..37396dd)
 
 - `tools/assets/unlock.js`: `show()` now waits for `DOMContentLoaded` before `document.open/write/close`. On the saved-key path the write ran during gate parsing, so it inserted into the gate document instead of replacing it. `gate.css` (`body{display:grid;place-items:center}`) stayed applied, which shifted the game list and sized highlight frames to their content until the video loaded.

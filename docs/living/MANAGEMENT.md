@@ -2,6 +2,14 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-11 — Game 3 film added: DFC 2–1 BRSC (6d4893d..6d4893d)
+
+**Delivered.** Fourth game on the site, with all three reports and six highlights (about 104 MB). The breakdown was checked against the video: kickoffs, all three goals and the corrected card calls match. One wording fix in the coaches' breakdown: a header that went wide had been counted as a keeper save.
+
+**Open.** There was no Reeplayer Final Score screenshot, so possession (72%), shot counts, the scorer's name and the 6' red card are unverified. The late-save clip is placed only to within about 3 minutes and may miss the save.
+
+**Capacity.** The published site is now 402 MB of the 1 GB Pages limit, which leaves room for about five more games at this size.
+
 ## 2026-10-11 — Consistent layout after refresh and clip load (37396dd..37396dd)
 
 **Delivered.** Fixed a layout bug users saw on refresh and when loading highlight clips. This was a small, contained change to the unlock script, with no change to content or security.
