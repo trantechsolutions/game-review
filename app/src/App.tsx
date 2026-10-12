@@ -9,7 +9,7 @@ import { Highlights } from "./pages/Highlights";
 import { MatchReport } from "./pages/MatchReport";
 import { PlayByPlay } from "./pages/PlayByPlay";
 import type { Game } from "./schema";
-import { BadPassword, SiteContext, useSite, useUnlock } from "./site";
+import { BadPassword, MissingData, SiteContext, useSite, useUnlock } from "./site";
 
 const PAGES = {
   "play-by-play": { key: "playByPlay", C: PlayByPlay },
@@ -148,7 +148,7 @@ function Gate({ submit }: { submit: (pw: string, remember: boolean) => Promise<v
     const f = new FormData(ev.currentTarget);
     setBusy(true); setMsg(t("checking"));
     try { await submit(String(f.get("pw")).trim(), f.get("remember") === "on"); }
-    catch (err) { setMsg(err instanceof BadPassword ? t("badPassword") : t("loadFailed")); setBusy(false); }
+    catch (err) { setMsg(err instanceof BadPassword ? t("badPassword") : err instanceof MissingData ? t("missingData") : t("loadFailed")); setBusy(false); }
   }
   return (
     <main className="gate">

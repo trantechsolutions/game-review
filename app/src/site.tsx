@@ -26,6 +26,8 @@ async function fetchSealed(key: CryptoKey, file: string): Promise<Bytes> {
 const json = (u: Bytes) => JSON.parse(new TextDecoder().decode(u));
 
 export class BadPassword extends Error {}
+/** The server answered with a page instead of the encrypted file (e.g. a dev server with no build). */
+export class MissingData extends Error {}
 
 // A wrong key derives a manifest name that doesn't exist (404), or, in theory, fails to decrypt.
 async function unlock(raw: Bytes) {
@@ -34,6 +36,7 @@ async function unlock(raw: Bytes) {
   const res = await fetch(file, { cache: "no-cache" });
   if (res.status === 404) throw new BadPassword();
   if (!res.ok) throw new Error(`manifest: ${res.status}`);
+  if (/text\/html/.test(res.headers.get("content-type") ?? "")) throw new MissingData();
   let plain: Bytes;
   try { plain = await open(key, new Uint8Array(await res.arrayBuffer())); } catch { throw new BadPassword(); }
   return { key, manifest: Manifest.parse(json(plain)) };
