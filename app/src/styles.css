@@ -109,8 +109,10 @@ nav.toc {
   padding-block: 18px; border-bottom: 1px solid var(--line);
   font: 600 0.8rem/1 var(--body); letter-spacing: 0.1em; text-transform: uppercase;
 }
-nav.toc a { text-decoration: none; color: var(--muted); padding-block: 4px; }
-nav.toc a:hover { color: var(--ink); }
+nav.toc button { font: inherit; letter-spacing: inherit; text-transform: inherit; background: none; border: 0; padding: 4px 0; color: var(--muted); cursor: pointer; }
+nav.toc button:hover { color: var(--ink); }
+section.sec { scroll-margin-top: 12px; }
+section.sec:focus { outline: none; }
 
 section.sec { padding-block: clamp(40px, 6vw, 70px) 0; display: grid; gap: 22px; }
 .sec-head { display: grid; gap: 10px; }

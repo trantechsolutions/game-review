@@ -1,28 +1,36 @@
-// Coach notes: sign in with the coach password, then read and write encrypted notes in Supabase.
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+// Coach notes: unlock with the coach password, then read and write encrypted notes in Supabase.
+// There are no accounts. The password derives an encryption key and an access key; the notes
+// functions in the database (tools/notes/setup.sql) only answer to the access key.
+import { createClient } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { COACH_EMAIL, NOTES_KDF, SUPABASE_ANON_KEY, SUPABASE_URL } from "./config";
+import { NOTES_KDF, SUPABASE_ANON_KEY, SUPABASE_URL } from "./config";
 import { b64, toB64, type Bytes } from "./lib/crypto";
 import { deriveNotesKeys, openNote, scopeFor, sealNote, type NoteBody } from "./lib/notesCrypto";
 
-const KEY_STORE = "dfc-notes-key";
-const REMEMBER = "dfc-notes-remember";
-const TABLE = "coach_notes";
+const STORE = "dfc-notes-keys";
 
 export interface Note extends NoteBody { id: string; updatedAt: string }
 
-const remembered = () => { try { return localStorage.getItem(REMEMBER) === "1"; } catch { return false; } };
-const storage = (remember: boolean) => { try { return remember ? localStorage : sessionStorage; } catch { return undefined; } };
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
-function client(remember: boolean): SupabaseClient {
-  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { persistSession: true, autoRefreshToken: true, storage: storage(remember), storageKey: "dfc-notes-auth" },
-  });
-}
+interface Keys { accessKey: string; encRaw: Bytes }
 
-const loadKey = (): Bytes | null => {
-  try { const s = sessionStorage.getItem(KEY_STORE) || localStorage.getItem(KEY_STORE); return s ? b64(s) : null; } catch { return null; }
+const loadKeys = (): Keys | null => {
+  try {
+    const s = sessionStorage.getItem(STORE) || localStorage.getItem(STORE);
+    if (!s) return null;
+    const { a, e } = JSON.parse(s);
+    return { accessKey: a, encRaw: b64(e) };
+  } catch { return null; }
 };
+const saveKeys = (k: Keys, remember: boolean) => {
+  try {
+    const s = JSON.stringify({ a: k.accessKey, e: toB64(k.encRaw) });
+    sessionStorage.setItem(STORE, s);
+    if (remember) localStorage.setItem(STORE, s);
+  } catch { /* storage blocked: unlocked for this page only */ }
+};
+const clearKeys = () => { try { sessionStorage.removeItem(STORE); localStorage.removeItem(STORE); } catch { /* nothing stored */ } };
 
 export class BadCoachPassword extends Error {}
 
@@ -50,82 +58,65 @@ export const useNotes = () => {
   return v;
 };
 
-interface Row { id: string; scope: string; data: string; updated_at: string }
+interface Row { id: string; data: string; updated_at: string }
 
 export function NotesProvider({ children }: { children: ReactNode }) {
-  const [sb, setSb] = useState<SupabaseClient>(() => client(remembered()));
-  const [encRaw, setEncRaw] = useState<Bytes | null>(loadKey);
-  const [session, setSession] = useState(false);
+  const [keys, setKeys] = useState<Keys | null>(loadKeys);
   const [version, setVersion] = useState(0);
   const [drawer, setDrawer] = useState<NotesApi["drawer"]>(null);
   const [loginOpen, setLoginOpen] = useState(false);
 
+  // A remembered key that no longer works (the coach password changed) is dropped.
   useEffect(() => {
-    sb.auth.getSession().then(({ data }) => setSession(!!data.session));
-    const { data } = sb.auth.onAuthStateChange((_e, s) => setSession(!!s));
-    return () => data.subscription.unsubscribe();
-  }, [sb]);
-
-  const forget = useCallback(() => {
-    try { sessionStorage.removeItem(KEY_STORE); localStorage.removeItem(KEY_STORE); localStorage.removeItem(REMEMBER); } catch { /* nothing stored */ }
-    setEncRaw(null);
-  }, []);
+    if (!keys) return;
+    sb.rpc("notes_check", { p_key: keys.accessKey }).then(({ data, error }) => {
+      if (!error && data === false) { clearKeys(); setKeys(null); }
+    });
+  }, [keys]);
 
   const signIn = useCallback(async (password: string, remember: boolean) => {
-    const keys = await deriveNotesKeys(password, NOTES_KDF);
-    const c = client(remember);
-    const { error } = await c.auth.signInWithPassword({ email: COACH_EMAIL, password: keys.authPassword });
-    if (error) throw error.status === 400 ? new BadCoachPassword() : error;
-    try {
-      sessionStorage.setItem(KEY_STORE, toB64(keys.encRaw));
-      if (remember) { localStorage.setItem(KEY_STORE, toB64(keys.encRaw)); localStorage.setItem(REMEMBER, "1"); }
-    } catch { /* storage blocked: signed in for this page only */ }
-    setSb(c);
-    setEncRaw(keys.encRaw);
-    setSession(true);
+    const k = await deriveNotesKeys(password, NOTES_KDF);
+    const { data, error } = await sb.rpc("notes_check", { p_key: k.accessKey });
+    if (error) throw error;
+    if (data !== true) throw new BadCoachPassword();
+    saveKeys(k, remember);
+    setKeys(k);
   }, []);
 
-  const signOut = useCallback(async () => {
-    await sb.auth.signOut().catch(() => undefined);
-    forget();
-    setSession(false);
-    setDrawer(null);
-  }, [sb, forget]);
-
-  const signedIn = session && !!encRaw;
+  const signOut = useCallback(async () => { clearKeys(); setKeys(null); setDrawer(null); }, []);
 
   const api = useMemo<NotesApi>(() => ({
-    signedIn, signIn, signOut, version, drawer, loginOpen, setLoginOpen,
+    signedIn: !!keys, signIn, signOut, version, drawer, loginOpen, setLoginOpen,
     openDrawer: (slug, anchor, label) => setDrawer({ slug, anchor, label }),
     closeDrawer: () => setDrawer(null),
     list: async slug => {
-      if (!encRaw) return [];
-      const scope = await scopeFor(encRaw, slug);
-      const { data, error } = await sb.from(TABLE).select("id, scope, data, updated_at").eq("scope", scope).order("updated_at");
+      if (!keys) return [];
+      const { data, error } = await sb.rpc("notes_list", { p_key: keys.accessKey, p_scope: await scopeFor(keys.encRaw, slug) });
       if (error) throw error;
       const out: Note[] = [];
       for (const r of (data ?? []) as Row[]) {
-        try { out.push({ ...(await openNote(encRaw, r.data)), id: r.id, updatedAt: r.updated_at }); }
-        catch { /* written with another coach password: skip */ }
+        try { out.push({ ...(await openNote(keys.encRaw, r.data)), id: r.id, updatedAt: r.updated_at }); }
+        catch { /* written under another coach password: skip */ }
       }
       return out;
     },
     save: async note => {
-      if (!encRaw) throw new Error("signed out");
-      const data = await sealNote(encRaw, { slug: note.slug, anchor: note.anchor, text: note.text, author: note.author });
-      const scope = await scopeFor(encRaw, note.slug);
-      const { error } = note.id
-        ? await sb.from(TABLE).update({ data, updated_at: new Date().toISOString() }).eq("id", note.id)
-        : await sb.from(TABLE).insert({ scope, data });
+      if (!keys) throw new Error("locked");
+      const { error } = await sb.rpc("notes_save", {
+        p_key: keys.accessKey, p_id: note.id ?? null,
+        p_scope: await scopeFor(keys.encRaw, note.slug),
+        p_data: await sealNote(keys.encRaw, { slug: note.slug, anchor: note.anchor, text: note.text, author: note.author }),
+      });
       if (error) throw error;
       setVersion(v => v + 1);
     },
     remove: async id => {
-      const { error } = await sb.from(TABLE).delete().eq("id", id);
+      if (!keys) throw new Error("locked");
+      const { error } = await sb.rpc("notes_delete", { p_key: keys.accessKey, p_id: id });
       if (error) throw error;
       setVersion(v => v + 1);
     },
-  }), [signedIn, signIn, signOut, version, drawer, loginOpen, encRaw, sb]);
+  }), [keys, signIn, signOut, version, drawer, loginOpen]);
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
 }

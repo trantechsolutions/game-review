@@ -3,7 +3,7 @@ import { NoteButton, useNoteCounts } from "../components/Notes";
 import { useI18n, type Key } from "../i18n";
 import type { Game, Priority } from "../schema";
 import { useSite } from "../site";
-import { SecHead } from "./shared";
+import { SecHead, Toc } from "./shared";
 
 const PRI: Record<Priority, Key> = { high: "priHigh", med: "priMed", low: "priLow" };
 
@@ -35,10 +35,7 @@ export function Coaches({ game: g }: { game: Game }) {
       </header>
 
       <main className="wrap">
-        <nav className="toc" aria-label={t("sections")}>
-          <a href="#priorities">{t("priorities")}</a><a href="#thirds">{t("byThird")}</a><a href="#units">{t("byUnit")}</a>
-          <a href="#plan">{t("trainingPlan")}</a><a href="#clips">{t("clips")}</a>
-        </nav>
+        <Toc items={[["priorities", t("priorities")], ["thirds", t("byThird")], ["units", t("byUnit")], ["plan", t("trainingPlan")], ["clips", t("clips")]]} />
 
         <section className="sec" id="priorities">
           <SecHead g={g} page="coaches" id="priorities" eyebrow={<T t={C.priorities.eyebrow} />} title={tx(C.priorities.title)} count={count} />

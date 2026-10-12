@@ -1,79 +1,86 @@
 // Coach-notes admin, run on the coach's PC. Reads the coach password from private/.coach-password
 // (one line, never committed).
 //
-//   npx tsx tools/notes/coach.ts auth-password   prints the Supabase password for the shared coach
-//                                               user (derived from the coach password; it is not
-//                                               the coach password itself)
-//   npx tsx tools/notes/coach.ts check           signs in, writes, reads and deletes a test note
-//   npx tsx tools/notes/coach.ts rotate          changes the coach password to private/.coach-password.new:
-//                                               re-encrypts every note, updates the Supabase password,
-//                                               then replaces .coach-password
+//   npx tsx tools/notes/coach.ts setup-sql   writes private/notes-setup.sql: tools/notes/setup.sql with the
+//                                           coach key's fingerprint filled in. Paste it into Supabase → SQL Editor.
+//   npx tsx tools/notes/coach.ts check       writes, reads and deletes a test note, and confirms the notes
+//                                           can't be reached without the coach password
+//   npx tsx tools/notes/coach.ts rotate      changes the coach password to private/.coach-password.new:
+//                                           re-encrypts every note, switches the database to the new key,
+//                                           then replaces .coach-password
 import { createClient } from "@supabase/supabase-js";
-import { existsSync, readFileSync, renameSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { COACH_EMAIL, NOTES_KDF, SUPABASE_ANON_KEY, SUPABASE_URL } from "../../app/src/config";
-import { deriveNotesKeys, openNote, scopeFor, sealNote, type NotesKeys } from "../../app/src/lib/notesCrypto";
+import { NOTES_KDF, SUPABASE_ANON_KEY, SUPABASE_URL } from "../../app/src/config";
+import { deriveNotesKeys, keyHash, openNote, scopeFor, sealNote } from "../../app/src/lib/notesCrypto";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const PW = join(ROOT, "private", ".coach-password");
 const NEW_PW = join(ROOT, "private", ".coach-password.new");
-const TABLE = "coach_notes";
+const fail = (msg: string): never => { console.error(msg); process.exit(1); };
 
 const readPw = (f: string) => {
-  if (!existsSync(f)) { console.error(`Put the coach password on one line in ${f} (never committed).`); process.exit(1); }
-  const pw = readFileSync(f, "utf8").replace(/^﻿/, "").replace(/\r?\n$/, "");
-  if (pw.length < 12) console.warn("warning: use a coach password of at least 12 characters.");
+  if (!existsSync(f)) fail(`Put the coach password on one line in ${f} (never committed).`);
+  const pw = readFileSync(f, "utf8").replace(/^﻿/, "").trim();
+  if (!pw) fail(`${f} is empty. Save the coach password in it (one line) first.`);
+  if (pw.length < 12) console.warn("warning: use a coach password of at least 12 characters; the notes are only as safe as it is.");
   return pw;
 };
 
-async function signIn(keys: NotesKeys) {
-  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
-  const { error } = await sb.auth.signInWithPassword({ email: COACH_EMAIL, password: keys.authPassword });
-  if (error) { console.error(`Sign-in failed: ${error.message}. Is the coach user created with the password from "auth-password"?`); process.exit(1); }
-  return sb;
-}
-
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
 const cmd = process.argv[2];
 const keys = await deriveNotesKeys(readPw(PW), NOTES_KDF);
 
-if (cmd === "auth-password") {
-  console.log(`email:    ${COACH_EMAIL}\npassword: ${keys.authPassword}`);
+async function requireKey(k: string) {
+  const { data, error } = await sb.rpc("notes_check", { p_key: k });
+  if (error) fail(`The notes functions aren't set up: ${error.message}. Run setup-sql and paste private/notes-setup.sql into Supabase.`);
+  if (data !== true) fail("The database doesn't accept this coach password. Run setup-sql again and paste the new file.");
+}
+
+if (cmd === "setup-sql") {
+  const sql = readFileSync(join(ROOT, "tools", "notes", "setup.sql"), "utf8").replace("__KEY_HASH__", await keyHash(keys.accessKey));
+  const out = join(ROOT, "private", "notes-setup.sql");
+  writeFileSync(out, sql);
+  console.log(`wrote ${out}\nPaste it into Supabase → SQL Editor → Run, then run: npx tsx tools/notes/coach.ts check`);
 } else if (cmd === "check") {
-  const sb = await signIn(keys);
+  await requireKey(keys.accessKey);
   const slug = "0000-00-00-check";
+  const scope = await scopeFor(keys.encRaw, slug);
   const data = await sealNote(keys.encRaw, { slug, anchor: "game", text: "connection check", author: "" });
-  const ins = await sb.from(TABLE).insert({ scope: await scopeFor(keys.encRaw, slug), data }).select("id").single();
-  if (ins.error) { console.error(`insert failed: ${ins.error.message} (has tools/notes/setup.sql been run?)`); process.exit(1); }
-  const got = await sb.from(TABLE).select("data").eq("id", ins.data.id).single();
-  if (got.error) { console.error(`read failed: ${got.error.message}`); process.exit(1); }
-  const body = await openNote(keys.encRaw, got.data.data);
-  const del = await sb.from(TABLE).delete().eq("id", ins.data.id);
-  if (del.error) { console.error(`delete failed: ${del.error.message}`); process.exit(1); }
-  // Signed out, the table must be invisible.
-  const anon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
-  const leak = await anon.from(TABLE).select("id").limit(1);
-  if (!leak.error && leak.data.length) { console.error("✗ notes are readable without signing in. Re-run setup.sql."); process.exit(1); }
-  console.log(`✓ coach notes work: wrote, read ("${body.text}") and deleted a note; nothing readable signed out`);
+  const saved = await sb.rpc("notes_save", { p_key: keys.accessKey, p_id: null, p_scope: scope, p_data: data });
+  if (saved.error) fail(`save failed: ${saved.error.message}`);
+  const listed = await sb.rpc("notes_list", { p_key: keys.accessKey, p_scope: scope });
+  if (listed.error) fail(`list failed: ${listed.error.message}`);
+  const row = (listed.data as { id: string; data: string }[]).find(r => r.id === saved.data);
+  if (!row) fail("the saved note didn't come back");
+  const body = await openNote(keys.encRaw, row!.data);
+  // Without the coach key, nothing is reachable.
+  const direct = await sb.from("coach_notes").select("id").limit(1);
+  const guessed = await sb.rpc("notes_list", { p_key: "not-the-key", p_scope: null });
+  const del = await sb.rpc("notes_delete", { p_key: keys.accessKey, p_id: saved.data });
+  if (del.error) fail(`delete failed: ${del.error.message}`);
+  if (!direct.error && direct.data.length) fail("✗ the notes table is readable without the coach password. Re-run the setup SQL.");
+  if (!guessed.error) fail("✗ the notes functions answered a wrong key. Re-run the setup SQL.");
+  console.log(`✓ coach notes work: saved, read ("${body.text}") and deleted a note; a wrong key and direct table access are refused`);
 } else if (cmd === "rotate") {
   const next = await deriveNotesKeys(readPw(NEW_PW), NOTES_KDF);
-  const sb = await signIn(keys);
-  const { data, error } = await sb.from(TABLE).select("id, data");
-  if (error) { console.error(error.message); process.exit(1); }
+  await requireKey(keys.accessKey);
+  const { data, error } = await sb.rpc("notes_list", { p_key: keys.accessKey, p_scope: null });
+  if (error) fail(error.message);
   let n = 0;
-  for (const row of data) {
+  for (const row of data as { id: string; data: string }[]) {
     // A rerun after a failed rotation finds some rows already under the new key; leave those.
     const body = await openNote(keys.encRaw, row.data).catch(() => null);
     if (!body) { await openNote(next.encRaw, row.data); continue; }
-    const upd = await sb.from(TABLE).update({ scope: await scopeFor(next.encRaw, body.slug), data: await sealNote(next.encRaw, body) }).eq("id", row.id);
-    if (upd.error) { console.error(`stopped after ${n} notes: ${upd.error.message}. Run rotate again with the same files.`); process.exit(1); }
+    const upd = await sb.rpc("notes_save", { p_key: keys.accessKey, p_id: row.id, p_scope: await scopeFor(next.encRaw, body.slug), p_data: await sealNote(next.encRaw, body) });
+    if (upd.error) fail(`stopped after ${n} notes: ${upd.error.message}. Run rotate again with the same files.`);
     n++;
   }
-  const pw = await sb.auth.updateUser({ password: next.authPassword });
-  if (pw.error) { console.error(`notes re-encrypted but the password change failed: ${pw.error.message}`); process.exit(1); }
+  const set = await sb.rpc("notes_set_key", { p_key: keys.accessKey, p_new_hash: await keyHash(next.accessKey) });
+  if (set.error) fail(`notes re-encrypted but switching the key failed: ${set.error.message}. Run rotate again.`);
   renameSync(NEW_PW, PW);
-  console.log(`✓ re-encrypted ${n} notes; the new coach password is live. Coaches signed in on other devices must sign in again.`);
+  console.log(`✓ re-encrypted ${n} notes; the new coach password is live. Coaches must unlock again with it.`);
 } else {
-  console.error("usage: npx tsx tools/notes/coach.ts auth-password | check | rotate");
-  process.exit(1);
+  fail("usage: npx tsx tools/notes/coach.ts setup-sql | check | rotate");
 }

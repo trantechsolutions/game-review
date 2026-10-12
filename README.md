@@ -2,7 +2,7 @@
 
 A password-protected game review app, published with GitHub Pages. The app's code is public, but it holds no game content. Every game, clip and the game list are encrypted. Without the team password, nothing here is readable.
 
-Each game has four pages (play-by-play, match report, coaches' breakdown, highlights), in English and Spanish. Coaches can sign in with a separate coach password and leave notes on a game, a section, a clip or a single moment.
+Each game has four pages (play-by-play, match report, coaches' breakdown, highlights), in English and Spanish. Coaches unlock a coach area with a separate coach password and leave notes on a game, a section, a clip or a single moment.
 
 ## How it works
 
@@ -24,6 +24,7 @@ app/                       the React app (Vite, TypeScript)
 private/                   (not in git)
   .site-password           the team password, on one line
   .coach-password          the coach-notes password, on one line
+  notes-setup.sql          generated database setup (tools/notes/coach.ts setup-sql)
   data/site.json           team name
   data/games/<slug>.json   one file per game, English and Spanish
   data/i18n/               translation work files (tools/i18n.mjs)
@@ -50,18 +51,19 @@ tools/kdf.json             key-derivation salt and iterations (not secret)
 
 ## Coach notes
 
-Notes are stored in Supabase, but only as ciphertext: the browser encrypts each note with a key derived from the coach password, and labels it with an opaque per-game id. Supabase never sees a note's text, which game it belongs to, or the coach password. All coaches share one Supabase account whose password is derived from the coach password.
+The coach area unlocks with the coach password; there are no accounts or sign-ups. Notes are stored in Supabase, but only as ciphertext:
+- The browser turns the coach password into two keys. One encrypts each note before it's sent. The other is the access key sent with every notes request.
+- The database keeps only a fingerprint (SHA-256) of the access key. Its notes functions refuse any request without the right key, and the tables can't be reached directly.
+- Each note is labelled with an opaque per-game id, so Supabase never sees a note's text, which game it's on, or the coach password.
 
 Setup (once):
 
-1. Put the coach password on one line in `private/.coach-password`.
-2. Run `npx tsx tools/notes/coach.ts auth-password`. It prints the email and the derived Supabase password.
-3. In Supabase, go to Authentication → Users → Add user → Create new user. Enter that email and password, and tick Auto Confirm User.
-4. In Supabase, go to SQL Editor, paste `tools/notes/setup.sql` and run it.
-5. Recommended: under Authentication → Sign In / Providers, turn off "Allow new users to sign up" (and Google, unless it's used). The database only lets the coach account in either way.
-6. Run `npx tsx tools/notes/coach.ts check`. It writes, reads and deletes a test note, and confirms nothing is readable signed out.
+1. Put the coach password on one line in `private/.coach-password`. Use 12 or more characters; the notes are only as safe as this password.
+2. Run `npx tsx tools/notes/coach.ts setup-sql`. It writes `private/notes-setup.sql`.
+3. In Supabase, open SQL Editor, paste that file and run it.
+4. Run `npx tsx tools/notes/coach.ts check`. It saves, reads and deletes a test note, and confirms a wrong key is refused.
 
-To change the coach password, put the new one in `private/.coach-password.new` and run `npx tsx tools/notes/coach.ts rotate`. It re-encrypts every note and updates the Supabase password.
+To change the coach password, put the new one in `private/.coach-password.new` and run `npx tsx tools/notes/coach.ts rotate`. It re-encrypts every note and switches the database to the new key. Coaches then unlock with the new password.
 
 The free Supabase plan pauses a project after about a week with no activity. Unpause it from the Supabase dashboard; nothing is lost.
 

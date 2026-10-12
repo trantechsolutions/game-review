@@ -36,3 +36,20 @@ export function SecHead({ g, page, id, eyebrow, title, sub, count }: {
     </div>
   );
 }
+
+/** In-page section links. The router owns the URL hash, so these scroll instead of navigating. */
+export function Toc({ items }: { items: [id: string, label: string][] }) {
+  const { t } = useI18n();
+  const go = (id: string) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    el.setAttribute("tabindex", "-1");
+    el.focus({ preventScroll: true });
+  };
+  return (
+    <nav className="toc" aria-label={t("sections")}>
+      {items.map(([id, label]) => <button key={id} type="button" onClick={() => go(id)}>{label}</button>)}
+    </nav>
+  );
+}

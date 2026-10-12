@@ -6,7 +6,7 @@ import { Game } from "../schema";
 import { aesKey, open, opaqueName } from "./crypto";
 import { fixtureGame } from "./fixture";
 import { parseMarkup, stripMarkup } from "./markup";
-import { deriveNotesKeys, openNote, scopeFor, sealNote } from "./notesCrypto";
+import { deriveNotesKeys, keyHash, openNote, scopeFor, sealNote } from "./notesCrypto";
 import { gameMinute, mmss, videoSec, workingClip } from "./time";
 
 describe("time", () => {
@@ -80,9 +80,10 @@ describe("notes crypto", () => {
   const kdf = { salt: "foq66j4u1iLA3WRLbh8m6g==", iterations: 1000 };
   it("derives the same keys from the same password, and different ones otherwise", async () => {
     const a = await deriveNotesKeys("coach pass", kdf), b = await deriveNotesKeys("coach pass", kdf), c = await deriveNotesKeys("other", kdf);
-    expect(a.authPassword).toBe(b.authPassword);
-    expect(a.authPassword).not.toBe(c.authPassword);
-    expect(a.authPassword).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(a.accessKey).toBe(b.accessKey);
+    expect(a.accessKey).not.toBe(c.accessKey);
+    expect(a.accessKey).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(await keyHash(a.accessKey)).toMatch(/^[0-9a-f]{64}$/);
   });
   it("round-trips a note and hides the game in the scope", async () => {
     const k = await deriveNotesKeys("coach pass", kdf);

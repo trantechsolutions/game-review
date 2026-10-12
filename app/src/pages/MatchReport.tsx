@@ -4,7 +4,7 @@ import { useI18n, type Key } from "../i18n";
 import { mmss, sec, videoSec, workingClip } from "../lib/time";
 import type { Game, GameEvent } from "../schema";
 import { useSite } from "../site";
-import { eventLabel, SecHead, useDateLine } from "./shared";
+import { eventLabel, SecHead, Toc, useDateLine } from "./shared";
 
 export function MatchReport({ game: g }: { game: Game }) {
   const US = useSite().manifest.us;
@@ -32,10 +32,7 @@ export function MatchReport({ game: g }: { game: Game }) {
       </header>
 
       <main className="wrap">
-        <nav className="toc" aria-label={t("sections")}>
-          <a href="#story">{t("story")}</a><a href="#first-half">{t("half1")}</a><a href="#second-half">{t("half2")}</a>
-          <a href="#numbers">{t("numbers")}</a><a href="#takeaways">{t("takeaways")}</a><a href="#clips">{t("clips")}</a>
-        </nav>
+        <Toc items={[["story", t("story")], ["first-half", t("half1")], ["second-half", t("half2")], ["numbers", t("numbers")], ["takeaways", t("takeaways")], ["clips", t("clips")]]} />
 
         <section className="sec" id="story">
           <SecHead g={g} page="report" id="story" eyebrow={<T t={R.story.eyebrow} />} title={tx(R.story.title)} count={count} />

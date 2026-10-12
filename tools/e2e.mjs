@@ -23,9 +23,9 @@ try {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await ctx.newPage();
   let expect404 = true; // the wrong-password attempt asks for a manifest that doesn't exist
-  let expect400 = false; // the wrong coach password is refused by Supabase
+  let expect400 = false; // the wrong coach password is refused (or, before setup, the notes functions don't exist)
   page.on("console", m => {
-    if (m.type() !== "error" || /fonts\.g/.test(m.text()) || (expect404 && /404/.test(m.text())) || (expect400 && /400/.test(m.text()))) return;
+    if (m.type() !== "error" || /fonts\.g/.test(m.text()) || (expect404 && /404/.test(m.text())) || (expect400 && /\b4\d\d\b/.test(m.text()))) return;
     problems.push(`console: ${m.text()}`);
   });
   page.on("pageerror", e => problems.push(`pageerror: ${e.message}`));
@@ -70,6 +70,21 @@ try {
     }
   }
 
+  // Section quick links scroll within the page and keep the route.
+  for (const [p, id] of [["coaches", "units"], ["report", "numbers"]]) {
+    await page.goto(`${base}#/game/${slugs[0]}/${p}`);
+    await page.locator("nav.toc button").first().waitFor();
+    const before = page.url();
+    await page.locator("nav.toc button").nth(p === "coaches" ? 2 : 3).click();
+    await page.waitForTimeout(1500); // smooth scroll
+    const { top, atBottom } = await page.evaluate(i => ({
+      top: document.getElementById(i).getBoundingClientRect().top,
+      atBottom: Math.ceil(scrollY + innerHeight) >= document.documentElement.scrollHeight - 2,
+    }), id);
+    if (page.url() !== before) problems.push(`${p} quick link changed the page to ${page.url()}`);
+    if (Math.abs(top) > 40 && !(atBottom && top > 0)) problems.push(`${p} quick link didn't scroll to #${id} (top ${Math.round(top)})`);
+  }
+
   // One clip: load, decrypt, play.
   await page.goto(`${base}#/game/${slugs[0]}/highlights`);
   await page.locator(".pg-hl .frame button").first().click();
@@ -92,17 +107,18 @@ try {
     await page.screenshot({ path: join(SHOTS, `mobile-${p}.png`), fullPage: false });
   }
 
-  // Coach sign-in reaches Supabase and rejects a wrong coach password.
+  // The coach area reaches Supabase and refuses a wrong coach password.
   await page.setViewportSize({ width: 1280, height: 900 });
+  expect400 = true;
   await page.goto(`${base}#/game/${slugs[0]}/play-by-play`);
   await page.getByRole("button", { name: /^(Coach|Entrenador)$/ }).click();
-  expect400 = true;
   await page.fill("#coach-pw", "not the coach password");
   await page.locator(".dialog button[type=submit]").click();
-  await page.locator(".dialog .msg").filter({ hasText: /didn't work|no funciona/ }).waitFor({ timeout: 30000 });
+  await page.locator(".dialog .msg").filter({ hasText: /didn't work|no funciona|notes service|servicio de notas/ }).waitFor({ timeout: 30000 });
+  console.log(`coach area refuses a wrong password (${await page.locator(".dialog .msg").textContent()})`);
+  await page.waitForTimeout(1500); // console events arrive a little after the response
   expect400 = false;
   await page.keyboard.press("Escape");
-  console.log("coach sign-in rejects a wrong password");
 
   // Lock clears the key.
   await page.getByRole("button", { name: /Bloquear|Lock/ }).click();
