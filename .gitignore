@@ -2,12 +2,13 @@
 # highlights.json and the site password (.site-password).
 private/
 
-# Old build folder from the first setup.
+# Vite output (tools/build.mjs copies it into public/).
 dist/
 
-# Full-game recordings and 5-minute working clips.
+# Full-game recordings and 5-minute working clips (MPEG-TS too; TypeScript sources are not video).
 *.mp4
-*.ts
+*.m2ts
+clips/**/*.ts
 
 .env
 .env.*

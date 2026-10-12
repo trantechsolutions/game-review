@@ -1,0 +1,32 @@
+{
+  "name": "dfc-game-film",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build:app": "tsc --noEmit && vite build",
+    "build": "npm run build:app && node tools/build.mjs",
+    "validate": "tsx tools/validate.ts",
+    "test": "vitest run",
+    "preview": "python -m http.server 8000 -d public"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.75.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.4",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.10",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^5.0.4",
+    "node-html-parser": "^7.0.1",
+    "playwright": "^1.58.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.10",
+    "vitest": "^3.2.4"
+  }
+}

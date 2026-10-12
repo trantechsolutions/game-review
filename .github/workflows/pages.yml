@@ -1,6 +1,6 @@
 name: Deploy game film site
 
-# public/ is already encrypted on the coach's PC (tools/build.mjs); this only publishes it.
+# public/ is built and encrypted on the coach's PC (npm run build); this only checks and publishes it.
 on:
   push:
     branches: [main]
@@ -27,12 +27,26 @@ jobs:
 
       - name: Refuse to publish anything unencrypted
         run: |
-          test -f public/index.html || { echo "public/ is empty; run node tools/build.mjs and commit public/"; exit 1; }
-          bad=$(find public -type f ! -name '*.bin' ! -name '*.html' ! -path 'public/assets/*' ! -name robots.txt ! -name .nojekyll)
+          test -f public/index.html || { echo "public/ is empty; run npm run build and commit public/"; exit 1; }
+          grep -q 'id="root"' public/index.html || { echo "public/index.html is not the app shell"; exit 1; }
+          # Only the app shell (index.html, assets/*.js|css), encrypted .bin files, robots.txt and .nojekyll.
+          bad=$(find public -type f ! -name '*.bin' ! -path 'public/index.html' ! -path 'public/robots.txt' ! -path 'public/.nojekyll' ! \( -path 'public/assets/*' \( -name '*.js' -o -name '*.css' \) \))
           if [ -n "$bad" ]; then echo "Unexpected files in public/:"; echo "$bad"; exit 1; fi
-          bad=$(find public -mindepth 2 -not -path 'public/assets*')
-          if [ -n "$bad" ]; then echo "public/ must be flat (opaque names only):"; echo "$bad"; exit 1; fi
-          if grep -L 'id="payload"' public/*.html | grep .; then echo "Pages above are not encrypted"; exit 1; fi
+          bad=$(find public -mindepth 2 -not -path 'public/assets' -not -path 'public/assets/*')
+          if [ -n "$bad" ]; then echo "public/ must be flat apart from assets/:"; echo "$bad"; exit 1; fi
+          # A sealed file is iv || ciphertext || tag: never valid JSON, never an MP4 ("ftyp" at byte 4).
+          python3 - <<'PY'
+          import glob, json, sys
+          bad = []
+          for f in glob.glob("public/*.bin"):
+              b = open(f, "rb").read()
+              try:
+                  json.loads(b); bad.append(f)
+              except ValueError:
+                  pass
+              if b[4:8] == b"ftyp": bad.append(f)
+          if bad: sys.exit("not encrypted: " + ", ".join(bad))
+          PY
 
       - uses: actions/configure-pages@v5
 

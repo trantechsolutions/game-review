@@ -1,130 +1,88 @@
-// Encrypts private/site/ into public/ on this PC. Only public/ is committed and published.
+// Encrypts the game data and clips on this PC and lays out public/ next to the built app.
+// Only public/ is committed and published.
 //
-// Every page becomes a small password gate holding its own AES-256-GCM ciphertext; the browser
-// derives the key from the password (PBKDF2-SHA256) and swaps the gate for the real page.
-// Every .mp4 is encrypted too and decrypted in the browser only when someone presses Load.
+//   private/data/site.json            team name (encrypted into the manifest)
+//   private/data/games/<slug>.json    one file per game (app/src/schema.ts), English and Spanish
+//   private/clips/<slug>/<id>.mp4     highlight clips (tools/make_highlights.py)
+//   dist/app/                         the React app shell from `vite build`; holds no game content
 //
-// Published files get opaque flat names (an HMAC of the source path), so names like
-// "games/<date>-<opponent>/clips/<player>-goal.mp4" never appear in the repo. The real-path → name
-// map is injected into every page inside the encryption, and media.js rewrites links after unlock.
+// Every data file and clip is AES-256-GCM encrypted under a key derived from the team password and
+// gets an opaque name (an HMAC of its path). The browser derives the same key, computes the manifest's
+// name, and finds everything else through the manifest.
 //
-// The IV is an HMAC of the file's path and content, so an unchanged file encrypts to identical
-// bytes and git sees no change; a changed file always gets a fresh IV.
-//
-//   node tools/build.mjs        (password from private/.site-password, or SITE_PASSWORD)
-import { createCipheriv, createHmac, pbkdf2Sync } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, sep } from "node:path";
+//   npm run build       (vite build, then this; password from private/.site-password or SITE_PASSWORD)
+import { spawnSync } from "node:child_process";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { keysFrom, opaque, seal } from "./lib/seal.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const SRC = join(ROOT, "private", "site");
+const DATA = process.env.DFC_DATA || join(ROOT, "private", "data");
+const CLIPS = join(ROOT, "private", "clips");
+const APP = join(ROOT, "dist", "app");
 const OUT = join(ROOT, "public");
 const PW_FILE = join(ROOT, "private", ".site-password");
 const KDF = JSON.parse(readFileSync(join(ROOT, "tools", "kdf.json"), "utf8"));
+const fail = msg => { console.error(msg); process.exit(1); };
 
 const password = process.env.SITE_PASSWORD
   || (existsSync(PW_FILE) ? readFileSync(PW_FILE, "utf8").replace(/^﻿/, "").replace(/\r?\n$/, "") : "");
-if (!password) {
-  console.error(`No password. Put it on one line in ${relative(ROOT, PW_FILE)} (never committed).`);
-  process.exit(1);
-}
+if (!password) fail(`No password. Put it on one line in ${relative(ROOT, PW_FILE)} (never committed).`);
 if (password.length < 12) console.warn("warning: the password is shorter than 12 characters; anyone can download the encrypted files and guess offline.");
+if (!existsSync(join(APP, "index.html"))) fail("dist/app is missing. Run `npm run build` (it builds the app first).");
 
-const key = pbkdf2Sync(password, Buffer.from(KDF.salt, "base64"), KDF.iterations, 32, "sha256");
-const ivKey = createHmac("sha256", key).update("dfc-film iv derivation").digest();
-const nameKey = createHmac("sha256", key).update("dfc-film name derivation").digest();
+// Schema, cross-references, Spanish and clip files, before anything is written.
+const v = spawnSync(process.execPath, [join(ROOT, "node_modules", "tsx", "dist", "cli.mjs"), join(ROOT, "tools", "validate.ts")], { stdio: "inherit" });
+if (v.status !== 0) fail("Validation failed; nothing was built.");
 
-const opaque = relPath => relPath === "index.html" ? relPath
-  : createHmac("sha256", nameKey).update(relPath).digest("hex").slice(0, 20) + (relPath.endsWith(".mp4") ? ".bin" : ".html");
-
-// iv (12 bytes) || ciphertext || GCM tag (16 bytes): the layout WebCrypto's AES-GCM decrypt expects after the iv.
-function seal(path, buf) {
-  const iv = createHmac("sha256", ivKey).update(path).update("\0").update(buf).digest().subarray(0, 12);
-  const c = createCipheriv("aes-256-gcm", key, iv);
-  return Buffer.concat([iv, c.update(buf), c.final(), c.getAuthTag()]);
-}
-
-// Pages exported from Claude artifacts are fragments; give them a full document before encrypting.
-function asDocument(html, relPath, routes) {
-  const media = `<script>window.DFC_ROUTES=${routes};window.DFC_SELF=${JSON.stringify(relPath)};</script>` +
-    `<script src="assets/media.js"></script>`;
-  if (/<!doctype/i.test(html)) return html.replace(/<\/body>/i, `${media}</body>`);
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8">` +
-    `<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">` +
-    `<meta name="robots" content="noindex, nofollow">` +
-    // The reset the artifact viewer used to supply.
-    `<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>` +
-    `</head><body>${html}\n${media}</body></html>`;
-}
-
-const gate = payload => `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="robots" content="noindex, nofollow">
-<title>Game Film</title>
-<link rel="stylesheet" href="assets/gate.css">
-</head>
-<body>
-<main class="gate" id="gate" hidden>
-  <p class="eyebrow">Team only</p>
-  <h1>Game <span>film</span></h1>
-  <form id="unlock">
-    <label for="pw">Team password</label>
-    <input id="pw" name="pw" type="password" autocomplete="current-password" required autofocus>
-    <label class="remember"><input id="remember" type="checkbox"> Keep me signed in on this device</label>
-    <button type="submit" id="go">Open</button>
-    <p class="msg" id="msg" role="alert"></p>
-  </form>
-</main>
-<script type="application/json" id="kdf">${JSON.stringify({ salt: KDF.salt, iterations: KDF.iterations })}</script>
-<script type="text/plain" id="payload">${payload}</script>
-<script src="assets/unlock.js"></script>
-</body>
-</html>
-`;
-
-function walk(dir) {
-  return readdirSync(dir, { withFileTypes: true }).flatMap(d =>
-    d.isDirectory() ? walk(join(dir, d.name)) : [join(dir, d.name)]);
-}
-
-if (!existsSync(join(SRC, "index.html"))) {
-  console.error(`Nothing to build: ${relative(ROOT, SRC)}/index.html is missing.`);
-  process.exit(1);
-}
-
-const files = [];
-for (const file of walk(SRC)) {
-  const relPath = relative(SRC, file).split(sep).join("/");
-  if (/\.(html|mp4)$/.test(relPath)) files.push({ file, relPath });
-  else console.warn(`skipped (not .html or .mp4, so not published): ${relPath}`);
-}
-files.sort((a, b) => a.relPath.localeCompare(b.relPath));
-const ROUTES = Object.fromEntries(files.map(({ relPath }) => [relPath, opaque(relPath)]));
-const routesJson = JSON.stringify(ROUTES).replace(/</g, "\\u003c");
+const keys = keysFrom(password, KDF);
+const site = JSON.parse(readFileSync(join(DATA, "site.json"), "utf8"));
+const games = readdirSync(join(DATA, "games")).filter(f => f.endsWith(".json")).sort()
+  .map(f => JSON.parse(readFileSync(join(DATA, "games", f), "utf8")));
 
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
-cpSync(join(ROOT, "tools", "assets"), join(OUT, "assets"), { recursive: true });
+cpSync(APP, OUT, { recursive: true });
 writeFileSync(join(OUT, "robots.txt"), "User-agent: *\nDisallow: /\n");
 writeFileSync(join(OUT, ".nojekyll"), "");
 
-let pages = 0, clips = 0, bytes = 0;
-for (const { file, relPath } of files) {
-  const dest = join(OUT, ROUTES[relPath]);
-  if (relPath.endsWith(".html")) {
-    const html = readFileSync(file, "utf8").replace(/\r\n/g, "\n");
-    const sealed = seal(relPath, Buffer.from(asDocument(html, relPath, routesJson), "utf8"));
-    writeFileSync(dest, gate(sealed.toString("base64")));
-    pages++;
-  } else {
-    const sealed = seal(relPath, readFileSync(file));
-    writeFileSync(dest, sealed);
-    clips++; bytes += sealed.length;
+const put = (path, buf) => {
+  const name = opaque(keys.nameKey, path);
+  const sealed = seal(keys, path, buf);
+  writeFileSync(join(OUT, name), sealed);
+  return { name, bytes: sealed.length };
+};
+
+const manifest = { us: site.us, team: site.team, games: [], clips: {} };
+let clipBytes = 0, clipCount = 0;
+for (const g of games) {
+  for (const c of g.highlights.clips) {
+    const src = join(CLIPS, g.slug, `${c.id}.mp4`);
+    // Same path the first site used, so unchanged clips keep their name and bytes (no re-upload).
+    const { name, bytes } = put(`games/${g.slug}/clips/${c.id}.mp4`, readFileSync(src));
+    manifest.clips[`${g.slug}/${c.id}`] = { file: name, bytes };
+    clipBytes += bytes; clipCount++;
   }
+  // The full-game video path stays on this PC.
+  const published = { ...g, highlights: { ...g.highlights, source: "" } };
+  const { name } = put(`data/${g.slug}.json`, Buffer.from(JSON.stringify(published), "utf8"));
+  manifest.games.push({ slug: g.slug, date: g.date, time: g.time, opponent: g.opponent, us: g.score.us, them: g.score.them, context: g.listContext, file: name });
 }
-console.log(`encrypted ${pages} pages and ${clips} clips (${(bytes / 1e6).toFixed(0)} MB) into public/`);
-if (bytes > 950e6) console.warn("warning: public/ is close to GitHub Pages' 1 GB site limit.");
+// Game-list order: newest first; the app keeps this order for same-day games.
+manifest.games.sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time));
+put("manifest.json", Buffer.from(JSON.stringify(manifest), "utf8"));
+
+// Nothing readable about the team, games or players may appear in the public app files.
+const needles = new Set([site.us, ...games.flatMap(g => [g.opponent, g.slug, ...g.highlights.clips.map(c => c.id)])]);
+const leaks = [];
+const walk = dir => readdirSync(dir, { withFileTypes: true }).flatMap(d => d.isDirectory() ? walk(join(dir, d.name)) : [join(dir, d.name)]);
+for (const file of walk(OUT).filter(f => !f.endsWith(".bin"))) {
+  const text = readFileSync(file, "utf8");
+  for (const n of needles) if (new RegExp(`(?<![A-Za-z0-9])${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![A-Za-z0-9])`).test(text)) leaks.push(`${relative(ROOT, file)}: "${n}"`);
+}
+if (leaks.length) { rmSync(OUT, { recursive: true, force: true }); fail(`Readable names in the public app files; public/ was removed:\n  ${leaks.join("\n  ")}`); }
+
+const total = walk(OUT).reduce((s, f) => s + statSync(f).size, 0);
+console.log(`encrypted ${games.length} games and ${clipCount} clips (${(clipBytes / 1e6).toFixed(0)} MB); public/ is ${(total / 1e6).toFixed(0)} MB`);
+if (total > 950e6) console.warn("warning: public/ is close to GitHub Pages' 1 GB site limit.");
