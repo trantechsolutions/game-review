@@ -142,11 +142,12 @@ function Gate({ submit }: { submit: (pw: string, remember: boolean) => Promise<v
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [show, setShow] = useState(false);
   async function onSubmit(ev: FormEvent<HTMLFormElement>) {
     ev.preventDefault();
     const f = new FormData(ev.currentTarget);
     setBusy(true); setMsg(t("checking"));
-    try { await submit(String(f.get("pw")), f.get("remember") === "on"); }
+    try { await submit(String(f.get("pw")).trim(), f.get("remember") === "on"); }
     catch (err) { setMsg(err instanceof BadPassword ? t("badPassword") : t("loadFailed")); setBusy(false); }
   }
   return (
@@ -156,9 +157,10 @@ function Gate({ submit }: { submit: (pw: string, remember: boolean) => Promise<v
         <h1>{t("appTitle").split(" ")[0]} <span>{t("appTitle").split(" ").slice(1).join(" ")}</span></h1>
         <div className="field">
           <label htmlFor="pw">{t("teamPassword")}</label>
-          <input id="pw" name="pw" type="password" autoComplete="current-password" required autoFocus />
+          <input id="pw" name="pw" type={show ? "text" : "password"} autoComplete="current-password" autoCapitalize="off" autoCorrect="off" spellCheck={false} required autoFocus />
         </div>
         <label className="check"><input id="remember" name="remember" type="checkbox" /> {t("keepSignedIn")}</label>
+        <label className="check"><input type="checkbox" checked={show} onChange={e => setShow(e.target.checked)} /> {t("showPassword")}</label>
         <button type="submit" className="btn-solid" disabled={busy}>{t("open")}</button>
         <p className="msg" role="alert">{msg}</p>
         <LangToggle className="btn-line lang" />

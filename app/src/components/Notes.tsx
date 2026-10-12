@@ -51,6 +51,7 @@ export function CoachLogin() {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [show, setShow] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => { if (loginOpen) { setMsg(""); input.current?.focus(); } }, [loginOpen]);
   useEscape(loginOpen, () => setLoginOpen(false));
@@ -61,7 +62,7 @@ export function CoachLogin() {
     const f = new FormData(ev.currentTarget);
     setBusy(true); setMsg(t("checking"));
     try {
-      await signIn(String(f.get("pw")), f.get("remember") === "on");
+      await signIn(String(f.get("pw")).trim(), f.get("remember") === "on");
       setLoginOpen(false);
     } catch (err) {
       setMsg(err instanceof BadCoachPassword ? t("badCoachPassword") : t("notesError"));
@@ -75,9 +76,10 @@ export function CoachLogin() {
         <p className="sub">{t("coachSignInHelp")}</p>
         <div className="field">
           <label htmlFor="coach-pw">{t("coachPassword")}</label>
-          <input ref={input} id="coach-pw" name="pw" type="password" autoComplete="current-password" required />
+          <input ref={input} id="coach-pw" name="pw" type={show ? "text" : "password"} autoComplete="current-password" autoCapitalize="off" autoCorrect="off" spellCheck={false} required />
         </div>
         <label className="check"><input name="remember" type="checkbox" /> {t("keepSignedIn")}</label>
+        <label className="check"><input type="checkbox" checked={show} onChange={e => setShow(e.target.checked)} /> {t("showPassword")}</label>
         <p className="msg" role="alert">{msg}</p>
         <div className="row-actions">
           <button type="button" className="btn-line" onClick={() => setLoginOpen(false)}>{t("cancel")}</button>
