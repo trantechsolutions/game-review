@@ -2,6 +2,10 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-12 — Players identified by position only (796bcdb..796bcdb)
+
+- Players are no longer named or identified by shirt number anywhere on the site. Every game now refers to them by position, for example "the striker" or "the left midfielder", for both DFC and opponents.
+
 ## 2026-10-11 — Game 3 film added: DFC 2–1 BRSC (6d4893d..6d4893d)
 
 - Game 3 of the OLOL United Cup (Sunday 11 Oct, home vs BRSC) is now on the site. DFC won 2–1 with two goals from Maxx F.

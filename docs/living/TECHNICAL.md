@@ -2,6 +2,14 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-12 — Players identified by position only (796bcdb..796bcdb)
+
+- `private/` (gitignored): names and `#<n>` jersey references replaced with positions in every `play-by-play`, `match-report`, `coaches-breakdown` and `highlights` page, and in `private/highlights.json`. 9 clips renamed (e.g. `02-<name>-16` → `02-st-16`), not re-cut.
+- `public/`: rebuilt with `node tools/build.mjs` (17 pages, 23 clips, 402 MB). 17 pages re-encrypted, 9 `.bin` added and 9 removed because the renames change the opaque names.
+- Checks: a grep of `private/` for every inventoried name and `#<n>` pattern returns nothing; every clip link resolves.
+- Known leftover: `docs/living/STAKEHOLDER.md` entry 2026-10-11 (6d4893d) names a player; not edited because the log is append-only.
+- Rollback: `git revert 796bcdb` and push. The original wording survives only in the Downloads source folders.
+
 ## 2026-10-11 — Game 3 film added: DFC 2–1 BRSC (6d4893d..6d4893d)
 
 - `public/`: rebuilt with `node tools/build.mjs` (17 pages, 23 clips). 4 new pages and 6 new `.bin` clips for slug `2026-10-11-brsc`. 13 existing pages re-encrypted because the game list and routes changed.

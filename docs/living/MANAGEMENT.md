@@ -2,6 +2,14 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-12 — Players identified by position only (796bcdb..796bcdb)
+
+**Delivered.** Player names and jersey numbers were removed from all four games (reports, highlights, clip titles and clip file names) and replaced with positions. The decision covers both teams and coaching staff; none of the pages named coaches.
+
+**Judgement calls.** Where a page did not say which position someone played, the nearest fit was used (for example "the wide midfielder" or "a DFC midfielder"). These should be checked by the coaching staff.
+
+**Open.** A player's name still appears in plain text in an earlier entry of the stakeholder log (2026-10-11, game 3) and therefore in the public repository history. Fixing it means editing that entry and, for full removal, rewriting history. Awaiting a decision.
+
 ## 2026-10-11 — Game 3 film added: DFC 2–1 BRSC (6d4893d..6d4893d)
 
 **Delivered.** Fourth game on the site, with all three reports and six highlights (about 104 MB). The breakdown was checked against the video: kickoffs, all three goals and the corrected card calls match. One wording fix in the coaches' breakdown: a header that went wide had been counted as a keeper save.
