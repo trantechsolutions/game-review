@@ -119,6 +119,16 @@ describe("schema and validation", () => {
     const g = fixtureGame({ listContext: { en: "Came back from behind", es: "Came back from behind" } });
     expect(check(g).join()).toMatch(/listContext: Spanish is identical/);
   });
+  it("rejects unit-review evidence that isn't a logged moment", () => {
+    const g = fixtureGame();
+    g.unitReviews.units[1].negatives[0].ev = ["2H 99:99"];
+    expect(check(g).join()).toMatch(/unitReviews\.midfield: "2H 99:99" is not a logged event/);
+  });
+  it("requires the three units in order", () => {
+    const g = fixtureGame();
+    g.unitReviews.units[0] = { ...g.unitReviews.units[0], unit: "attack" };
+    expect(Game.safeParse(g).success).toBe(false);
+  });
   it("rejects HTML-looking ids and unknown event types", () => {
     const g = fixtureGame();
     (g.events[1] as { y: string }).y = "Bicycle kick";

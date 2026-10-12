@@ -8,12 +8,14 @@ import { GameList } from "./pages/GameList";
 import { Highlights } from "./pages/Highlights";
 import { MatchReport } from "./pages/MatchReport";
 import { PlayByPlay } from "./pages/PlayByPlay";
+import { UnitReview } from "./pages/UnitReview";
 import type { Game } from "./schema";
 import { BadPassword, MissingData, SiteContext, useSite, useUnlock } from "./site";
 
 const PAGES = {
   "play-by-play": { key: "playByPlay", C: PlayByPlay },
   coaches: { key: "coachesBreakdown", C: Coaches },
+  units: { key: "unitReview", C: UnitReview },
   highlights: { key: "highlights", C: Highlights },
   report: { key: "matchReport", C: MatchReport },
 } as const;
@@ -114,6 +116,7 @@ function GamePage() {
     };
     C2.thirds.blocks.forEach((b, i) => { map[`coaches/third-${i + 1}`] = tx(b.name); });
     C2.units.items.forEach((u, i) => { map[`coaches/unit-${i + 1}`] = tx(u.name); });
+    for (const u of ["defense", "midfield", "attack"] as const) map[`units/${u}`] = t(`unit_${u}`);
     return map[`${pg}/${id}`] ?? anchor;
   };
 

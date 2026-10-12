@@ -51,6 +51,7 @@ export function GameList() {
                 <div className="links">
                   <Link className="pbp" to={`${base}/play-by-play`}>{t("playByPlay")}</Link>
                   <Link className="coach" to={`${base}/coaches`}>{t("coachesBreakdown")}</Link>
+                  <Link className="units" to={`${base}/units`}>{t("unitReview")}</Link>
                   <Link className="hl" to={`${base}/highlights`}>{t("highlights")}</Link>
                   <Link className="rep" to={`${base}/report`}>{t("matchReport")}</Link>
                 </div>

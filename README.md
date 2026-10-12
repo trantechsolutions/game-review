@@ -2,11 +2,11 @@
 
 A password-protected game review app, published with GitHub Pages. The app's code is public, but it holds no game content. Every game, clip and the game list are encrypted. Without the team password, nothing here is readable.
 
-Each game has four pages (play-by-play, match report, coaches' breakdown, highlights), in English and Spanish. Coaches unlock a coach area with a separate coach password and leave notes on a game, a section, a clip or a single moment.
+Each game has five pages (play-by-play, match report, coaches' breakdown, unit review, highlights), in English and Spanish. The unit review covers the defensive, midfield and attacking units: positives, negatives, and how to improve (marking, reading the play, body shape, formation and more). Coaches unlock a coach area with a separate coach password and leave notes on a game, a section, a clip or a single moment.
 
 ## How it works
 
-- Each game is one JSON file in `private/data/games/` (its shape is `app/src/schema.ts`). The React app renders all four pages from it, so a new game needs no new pages.
+- Each game is one JSON file in `private/data/games/` (its shape is `app/src/schema.ts`). The React app renders all five pages from it, so a new game needs no new pages.
 - `private/` stays on the coach's PC. It is ignored by git and never pushed.
 - `npm run build` checks every game file, builds the app, then encrypts the games, the game list and the clips into `public/` with AES-256-GCM. The key comes from the team password via PBKDF2-SHA256 with 600,000 iterations. Every encrypted file gets an opaque name, and the build fails if a team, opponent or game name shows up in the readable app files.
 - Only `public/` and the source are committed. On push to `main`, GitHub Actions checks that `public/` holds only the app shell and encrypted files, then publishes it.
@@ -42,7 +42,7 @@ tools/kdf.json             key-derivation salt and iterations (not secret)
 
 ## Adding a game
 
-1. Write `private/data/games/YYYY-MM-DD-opponent.json`, in English and Spanish. Copy an existing game as the template. People are named by position only, never by name or shirt number.
+1. Write `private/data/games/YYYY-MM-DD-opponent.json`, in English and Spanish, including the unit reviews. Copy an existing game as the template. People are named by position only, never by name or shirt number.
 2. Set `highlights.source` to the full-game video and list the clips, then run `python tools/make_highlights.py --game YYYY-MM-DD-opponent` (add `--cpu` without an NVIDIA GPU).
 3. Run `npm run build`, then `node tools/e2e.mjs`.
 4. Commit `public/` and push. Unchanged files encrypt to identical bytes, so a push only uploads what changed.

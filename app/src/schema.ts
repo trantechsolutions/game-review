@@ -51,6 +51,29 @@ const StatTable = z.object({
 
 const ReportClip = z.object({ t: Team, what: Text, file: z.string(), at: z.string() }).strict();
 
+// What a unit-review improvement works on. Labels live in i18n.tsx (area_<name>).
+export const IMPROVEMENT_AREAS = [
+  "marking", "reading-play", "body-shape", "formation", "positioning", "communication",
+  "pressing", "transition", "first-touch", "passing", "decision-making", "finishing", "set-pieces",
+] as const;
+export type ImprovementArea = (typeof IMPROVEMENT_AREAS)[number];
+
+const Point = z.object({ text: Text, ev: z.array(z.string()) }).strict();
+
+const UnitReview = z.object({
+  unit: z.enum(["defense", "midfield", "attack"]),
+  positions: z.string(),           // e.g. "GK · LB · LCB · RCB · RB"
+  summary: Text,
+  positives: z.array(Point).min(1),
+  negatives: z.array(Point).min(1),
+  improvements: z.array(z.object({
+    area: z.enum(IMPROVEMENT_AREAS),
+    title: Text,
+    detail: Text,                  // what to do and how to coach it
+    ev: z.array(z.string()),       // the moments it comes from, "1H 12:54"
+  }).strict()).min(1),
+}).strict();
+
 export const HIGHLIGHT_TAGS = ["Goal", "Conceded", "Save", "Chance", "Build-up", "Defending", "Card", "Set piece"] as const;
 
 export const Game = z.object({
@@ -124,6 +147,12 @@ export const Game = z.object({
     }).strict(),
     footer: z.array(Text),
   }).strict(),
+
+  // One review per unit, in this order: defense, midfield, attack.
+  unitReviews: z.object({
+    intro: Text,
+    units: z.tuple([UnitReview, UnitReview, UnitReview]),
+  }).strict().refine(r => r.units.map(u => u.unit).join() === "defense,midfield,attack", "units must be defense, midfield, attack"),
 
   highlights: z.object({
     source: z.string(),             // full-game video on the coach's PC; never published

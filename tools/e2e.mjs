@@ -48,6 +48,7 @@ try {
     report: async () => { await page.locator(".pg-report .phase").first().waitFor(); if (!(await page.locator(".pg-report svg circle").count())) throw new Error("empty timeline"); },
     coaches: async () => { if ((await page.locator(".pg-coaches .zone").count()) !== 3) throw new Error("zones"); },
     highlights: async () => { if (!(await page.locator(".pg-hl figure").count())) throw new Error("no clips"); },
+    units: async () => { if ((await page.locator(".pg-units section.sec").count()) !== 3) throw new Error("expected 3 unit reviews"); },
   };
 
   for (const lang of ["en", "es"]) {
@@ -55,7 +56,7 @@ try {
     for (const slug of slugs) for (const [p, check] of Object.entries(checks)) {
       await page.goto(`${base}#/game/${slug}/${p}`);
       try {
-        await page.locator(`.pg-${p === "play-by-play" ? "pbp" : p === "highlights" ? "hl" : p}`).waitFor({ timeout: 20000 });
+        await page.locator(`.pg-${{ "play-by-play": "pbp", highlights: "hl" }[p] ?? p}`).waitFor({ timeout: 20000 });
         await check();
         const htmlLang = await page.evaluate(() => document.documentElement.lang);
         if (htmlLang !== lang) throw new Error(`html lang ${htmlLang}`);

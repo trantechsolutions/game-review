@@ -24,6 +24,11 @@ export function check(raw: unknown, clipsDir?: string): string[] {
     if (!e) errs.push(`report.halves.${i}.phases.${j}: unknown event ${id}`);
     else if (e.h !== i + 1) errs.push(`report.halves.${i}.phases.${j}: event ${id} is in the other half`);
   })));
+  // Unit-review evidence must point at logged moments ("1H 12:54").
+  const moments = new Set(g.events.map(e => `${e.h}H ${e.c}`));
+  g.unitReviews.units.forEach(u => [...u.positives, ...u.negatives, ...u.improvements].forEach(p => p.ev.forEach(m => {
+    if (!moments.has(m)) errs.push(`unitReviews.${u.unit}: "${m}" is not a logged event`);
+  })));
   const clipIds = new Set<string>();
   for (const c of g.highlights.clips) {
     if (clipIds.has(c.id)) errs.push(`highlights: duplicate clip ${c.id}`);

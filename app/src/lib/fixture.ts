@@ -45,6 +45,15 @@ export function fixtureGame(over: Partial<Game> = {}): Game {
       clips: { eyebrow: T("e"), title: T("t"), sub: T("s"), rows: [] },
       footer: [],
     },
+    unitReviews: {
+      intro: T("Intro"),
+      units: (["defense", "midfield", "attack"] as const).map(unit => ({
+        unit, positions: "GK", summary: T("Summary"),
+        positives: [{ text: T("Good"), ev: ["1H 0:00"] }],
+        negatives: [{ text: T("Bad"), ev: [] }],
+        improvements: [{ area: "marking" as const, title: T("Mark"), detail: T("Detail"), ev: [] }],
+      })) as unknown as Game["unitReviews"]["units"],
+    },
     highlights: { source: "", clips: [{ id: "01-goal", label: T("Goal"), tag: "Goal", start: "45:00", end: "46:00" }] },
     ...over,
   };
