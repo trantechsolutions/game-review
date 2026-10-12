@@ -2,6 +2,11 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-12 — Unit review page (6c36dbb..6c36dbb)
+
+- Every game has a new **Unit review** page, in English and Spanish. It looks at the defence, the midfield and the attack separately: what went well, what went wrong, and how to improve, such as marking, reading the play, body shape and formation.
+- Each point links to the moment in the game it comes from, so it's easy to find on the video. Coaches can leave notes on each unit.
+
 ## 2026-10-12 — React app, Spanish and coach notes (029f974..cc76569)
 
 - The site has been rebuilt. It looks the same, but every page now has an English/Español button, and all four games are fully translated into Spanish.

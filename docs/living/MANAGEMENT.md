@@ -2,6 +2,14 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-12 — Unit review page (6c36dbb..6c36dbb)
+
+**Delivered.** A fifth page per game: a review of the defensive, midfield and attacking units with positives, negatives and tagged improvements. Written for all four games in both languages. The analyst agent now produces it for every new game.
+
+**Decision.** Every point must cite a logged moment, and the build rejects a review that cites a moment not in the game's log. This keeps the reviews grounded in the tape rather than generic advice.
+
+**Risk.** Low. Content only; no change to security or hosting. Site size unchanged (about 421 MB of the 1 GB limit).
+
 ## 2026-10-12 — React app, Spanish and coach notes (029f974..cc76569)
 
 **Delivered.** The site is now a React app. Each game is one data file rendered by shared page templates, so adding a game no longer means building four pages by hand. All four games were converted and translated into Spanish. Coaches have an encrypted notes area backed by Supabase (free plan).

@@ -2,6 +2,15 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-12 — Unit review page (6c36dbb..6c36dbb)
+
+- `app/src/schema.ts`: required `unitReviews` = `{ intro, units: [defense, midfield, attack] }`. Each unit has `positions`, `summary`, `positives[]`/`negatives[]` (`{text, ev}`) and `improvements[]` (`{area, title, detail, ev}`, `area` ∈ `IMPROVEMENT_AREAS`). A refine enforces the unit order.
+- `app/src/pages/UnitReview.tsx` (route `/game/:slug/units`), plus the game-list button, i18n keys (`unit_*`, `area_*`), styles under `.pg-units`, and note anchors `section:units/<unit>`.
+- `tools/validate.ts`: every unit-review `ev` must match a logged event (`<h>H <clock>`).
+- Tests: 18 unit tests (added evidence and unit-order checks). The e2e covers 20 pages in EN/ES; it caught an untranslated position label, which was fixed.
+- `.gitignore`: `.vite/` dev cache.
+- Rollback: `git revert 6c36dbb`, `npm run build`, push.
+
 ## 2026-10-12 — React app, Spanish and coach notes (029f974..cc76569)
 
 - **App:** `app/` (Vite 7, React 19, TypeScript, react-router hash routing). `app/src/schema.ts` (zod) defines the game file; every prose field is `{en, es}` with `**bold**`/`*italic*`/`mono` markup only (no HTML rendered from data). Pages: `pages/{PlayByPlay,MatchReport,Coaches,Highlights,GameList}.tsx`; UI strings in `i18n.tsx`. Video times, working-clip refs, game minutes, per-half stats and the shot timeline are computed from `video` settings and `events`.
