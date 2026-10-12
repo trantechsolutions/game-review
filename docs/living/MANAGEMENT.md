@@ -2,6 +2,19 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-12 — React app, Spanish and coach notes (029f974..cc76569)
+
+**Delivered.** The site is now a React app. Each game is one data file rendered by shared page templates, so adding a game no longer means building four pages by hand. All four games were converted and translated into Spanish. Coaches have an encrypted notes area backed by Supabase (free plan).
+
+**Decisions.**
+- *Spanish written at breakdown time*, not machine-translated in the browser: reviewed text, no third-party service sees the content, no running cost.
+- *Coach area unlocks with a coach password only, no accounts.* The password derives an encryption key and an access key. Supabase stores only ciphertext and a fingerprint of the access key, so it never sees note text, which game a note is on, or the password.
+- *Same privacy model as before.* Games, clips and the game list stay encrypted with the team password, and the public app code no longer contains the team or opponent names. The deploy workflow rejects anything unencrypted.
+
+**Risk.** Low for viewers: same password, same look, verified by an automated browser test in both languages. Notes are only as strong as the coach password, so it should be 12+ characters. The free Supabase project pauses after about a week idle and must be unpaused from the dashboard; no data is lost.
+
+**Open.** An earlier stakeholder entry (2026-10-11, game 3) still names a player in plain text. Changing the coach password later uses the rotate tool, which re-encrypts every note.
+
 ## 2026-10-12 — Players identified by position only (796bcdb..796bcdb)
 
 **Delivered.** Player names and jersey numbers were removed from all four games (reports, highlights, clip titles and clip file names) and replaced with positions. The decision covers both teams and coaching staff; none of the pages named coaches.

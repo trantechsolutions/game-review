@@ -2,6 +2,16 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-12 — React app, Spanish and coach notes (029f974..cc76569)
+
+- **App:** `app/` (Vite 7, React 19, TypeScript, react-router hash routing). `app/src/schema.ts` (zod) defines the game file; every prose field is `{en, es}` with `**bold**`/`*italic*`/`mono` markup only (no HTML rendered from data). Pages: `pages/{PlayByPlay,MatchReport,Coaches,Highlights,GameList}.tsx`; UI strings in `i18n.tsx`. Video times, working-clip refs, game minutes, per-half stats and the shot timeline are computed from `video` settings and `events`.
+- **Data:** `private/data/games/<slug>.json`, `private/data/site.json`, clips in `private/clips/<slug>/`. The four games were scraped from the old pages (`tools/legacy/`, Playwright) and translated with `tools/i18n.mjs` (export/import, warns on markup or number drift). Old pages kept in `private/legacy/`.
+- **Build:** `npm run build` = `tsc` + `vite build` + `tools/build.mjs`. It validates (`tools/validate.ts`: schema, unique ids, phase refs, Spanish present and not copied, clip files under 95 MB), seals games, the manifest and clips (`tools/lib/seal.mjs`, unchanged AES-GCM/PBKDF2 scheme), and fails if the team name, an opponent, a slug or a clip id appears in readable output. The browser derives the manifest's opaque name from the key. Clips keep their old sealed path, so all 23 are byte-identical (no re-upload). The team's short name moved into the encrypted manifest.
+- **Coach notes:** `tools/notes/setup.sql` creates `coach_notes` and `coach_key` (RLS on, no grants to anon) and security-definer RPCs `notes_check/list/save/delete/set_key` that check `sha256(p_key)`. It also grants schema usage to the API roles. The client (`app/src/notes.tsx`, `lib/notesCrypto.ts`) derives the access key and the AES key from the coach password with PBKDF2 then HMAC; scope = HMAC(slug). `tools/notes/coach.ts` covers `setup-sql`, `check` and `rotate`.
+- **Other:** `tools/make_highlights.py` reads clips from the game file and no longer writes pages. `tools/assets/` removed. `.gitignore` no longer ignores `*.ts` (it was hiding TypeScript; video is `*.m2ts` / `clips/**/*.ts`). `pages.yml` allows only `index.html`, `assets/*.js|css` and `*.bin`, and rejects any `.bin` that parses as JSON or has an MP4 header. `npm run dev` serves `public/*.bin` so the gate works locally.
+- **Tests:** `npx vitest run` passes 16 tests covering time maths against the old pages, build-to-browser crypto, note crypto and validation. `node tools/e2e.mjs` passes: unlock, 16 pages in EN/ES with no leftover English, clip decrypt, refresh, quick links, 375 px width, coach-area rejection, lock. `coach.ts check` passes against the live Supabase project.
+- **Rollback:** `git revert` the merge and push; the previous encrypted pages return. Notes in Supabase are unaffected.
+
 ## 2026-10-12 — Players identified by position only (796bcdb..796bcdb)
 
 - `private/` (gitignored): names and `#<n>` jersey references replaced with positions in every `play-by-play`, `match-report`, `coaches-breakdown` and `highlights` page, and in `private/highlights.json`. 9 clips renamed (e.g. `02-<name>-16` → `02-st-16`), not re-cut.

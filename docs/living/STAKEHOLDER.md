@@ -2,6 +2,13 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-12 — React app, Spanish and coach notes (029f974..cc76569)
+
+- The site has been rebuilt. It looks the same, but every page now has an English/Español button, and all four games are fully translated into Spanish.
+- Coaches have a new coach area, opened with a separate coach password. Coaches can leave notes on a whole game, a section of a report, a highlight clip or a single moment in the play-by-play. Players and parents using the team password don't see notes.
+- The section shortcuts at the top of the match report and coaches' breakdown now jump to the right section.
+- The password box ignores stray spaces and has a "Show password" option.
+
 ## 2026-10-12 — Players identified by position only (796bcdb..796bcdb)
 
 - Players are no longer named or identified by shirt number anywhere on the site. Every game now refers to them by position, for example "the striker" or "the left midfielder", for both DFC and opponents.
