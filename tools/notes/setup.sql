@@ -10,6 +10,10 @@
 
 create extension if not exists pgcrypto with schema extensions;
 
+-- Newer projects don't let the public API roles into the schema by default. This lets them call
+-- the functions granted below; the tables stay closed to them.
+grant usage on schema public to anon, authenticated;
+
 create table if not exists public.coach_notes (
   id         uuid primary key default gen_random_uuid(),
   scope      text not null check (scope ~ '^[0-9a-f]{32}$'),
