@@ -102,6 +102,13 @@ button { font-family: inherit; }
 
 /* ---------- Rich text ---------- */
 b, strong { font-weight: 700; }
+abbr.pos-abbr { position: relative; text-decoration: underline dotted; text-decoration-thickness: 1px; text-underline-offset: 2px; cursor: pointer; }
+/* Phones don't show title tooltips; this one appears on tap (and on hover with a mouse). */
+abbr.pos-abbr:hover::after {
+  content: attr(data-full); position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%); z-index: 10;
+  white-space: nowrap; font: 600 0.75rem/1 var(--body); letter-spacing: 0; text-transform: none;
+  padding: 6px 8px; border-radius: 4px; background: var(--ink); color: var(--bg); pointer-events: none;
+}
 
 /* ---------- Table of contents ---------- */
 nav.toc {
@@ -472,3 +479,5 @@ footer.foot b { color: var(--ink); }
 .note-item .by { font: 500 0.74rem/1.3 var(--mono); color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .note-item .acts { display: flex; gap: 6px; }
 .row-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

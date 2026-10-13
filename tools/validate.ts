@@ -39,6 +39,25 @@ export function check(raw: unknown, clipsDir?: string): string[] {
       else if (statSync(f).size > MAX_CLIP) errs.push(`highlights: ${c.id}.mp4 is over 95 MB`);
     }
   }
+  // Positions are written as acronyms (GK, LCB, ST…; app/src/lib/positions.ts). Unit headings are exempt.
+  const SPELLED: Record<"en" | "es", RegExp> = {
+    en: /\b(?:goal ?keepers?|keepers?|strikers?|cent(?:re|er)[- ]?backs?|cent(?:re|er)[- ](?:left|right) (?:defender|back|mid(?:fielder)?)|full[- ]?backs?|wide mid(?:fielder)?s?|wingers?)\b/i,
+    es: /\b(?:porteros?|delanteros?|central (?:izquierdo|derecho)|medio centro-(?:izquierda|derecha)|mediocentros?|volantes?|laterales?)\b/i,
+  };
+  const walkPos = (v: unknown, path: string) => {
+    if (Text.safeParse(v).success) {
+      if (/^coaches\.units\.items\.\d+\.name$/.test(path)) return;
+      for (const l of ["en", "es"] as const) {
+        const m = (v as Text)[l].match(SPELLED[l]);
+        if (m) errs.push(`${path}.${l}: write "${m[0]}" as a position acronym`);
+      }
+      return;
+    }
+    if (Array.isArray(v)) v.forEach((x, i) => walkPos(x, `${path}.${i}`));
+    else if (v && typeof v === "object") for (const [k, x] of Object.entries(v)) walkPos(x, path ? `${path}.${k}` : k);
+  };
+  walkPos(g, "");
+
   // Spanish that is just the English copied over is usually a missed translation.
   const walk = (v: unknown, path: string) => {
     if (Text.safeParse(v).success) {

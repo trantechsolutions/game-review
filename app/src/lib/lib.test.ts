@@ -6,6 +6,7 @@ import { Game } from "../schema";
 import { aesKey, open, opaqueName } from "./crypto";
 import { fixtureGame } from "./fixture";
 import { parseMarkup, stripMarkup } from "./markup";
+import { splitPositions } from "./positions";
 import { deriveNotesKeys, keyHash, openNote, scopeFor, sealNote } from "./notesCrypto";
 import { gameMinute, mmss, videoSec, workingClip } from "./time";
 
@@ -35,6 +36,16 @@ describe("time", () => {
     expect(gameMinute(fixtureGame({ video: { ...g.video, minute: "elapsed" } }), e)).toBe(30);
     expect(gameMinute(g, e)).toBe(31);
     expect(gameMinute(fixtureGame({ video: { ...g.video, minute: null } }), e)).toBeNull();
+  });
+});
+
+describe("position acronyms", () => {
+  it("finds whole acronyms (and plurals) with their full names, and nothing inside other words", () => {
+    expect(splitPositions("LCB to the LM; STs press. ALM xST", "en")).toEqual([
+      { abbr: "LCB", title: "Left centre-back" }, " to the ", { abbr: "LM", title: "Left midfielder" }, "; ",
+      { abbr: "STs", title: "Striker" }, " press. ALM xST",
+    ]);
+    expect(splitPositions("el GK", "es")).toEqual(["el ", { abbr: "GK", title: "Portero" }]);
   });
 });
 
@@ -123,6 +134,15 @@ describe("schema and validation", () => {
     const g = fixtureGame();
     g.unitReviews.units[1].negatives[0].ev = ["2H 99:99"];
     expect(check(g).join()).toMatch(/unitReviews\.midfield: "2H 99:99" is not a logged event/);
+  });
+  it("rejects spelled-out positions but allows unit headings", () => {
+    const g = fixtureGame();
+    g.events[1].d = { en: "The keeper saves.", es: "El portero para." };
+    g.coaches.units.items[0].name = { en: "Goalkeeper", es: "Portero" };
+    const errs = check(g).join("\n");
+    expect(errs).toMatch(/events\.1\.d\.en: write "keeper"/);
+    expect(errs).toMatch(/events\.1\.d\.es: write "portero"/);
+    expect(errs).not.toMatch(/units\.items\.0\.name/);
   });
   it("requires the three units in order", () => {
     const g = fixtureGame();
