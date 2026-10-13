@@ -2,6 +2,14 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-12 — Coaches-only breakdown and a re-cut save clip (f3d2a85..f3d2a85)
+
+**Delivered.** The coaches' breakdown is encrypted with a key from the coach password, separate from the team password, and hidden in the app until the coach area is unlocked. A review of the non-goal highlight clips found the Krewe fast-break save clip mistimed; it was re-cut and checked against the full video.
+
+**Risk.** Older copies of the breakdown remain in the repository's history, encrypted with the team password; removing them would need a history rewrite (not done). Changing the coach password now also needs a site rebuild. Clip review: the Krewe one-on-one and HFC ball-win clips look mistimed but couldn't be confirmed at the camera's distance. Four other non-goal clips are not yet reviewed.
+
+**Open.** Times for the uncertain clips (ideally from the coaching staff scrubbing the full video), and a decision on the history rewrite.
+
 ## 2026-10-12 — Positions as acronyms (55fa811..55fa811)
 
 **Delivered.** All four games now use position acronyms throughout (385 passages updated, both languages), with the full name shown on hover or tap. Future breakdowns must follow the same convention: the build rejects spelled-out positions.

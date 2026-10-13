@@ -2,6 +2,11 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-12 — Coaches-only breakdown and a re-cut save clip (f3d2a85..f3d2a85)
+
+- The coaches' breakdown is now for coaches only. It appears after the coach area is unlocked with the coach password. Players and parents still see the play-by-play, match report, unit review and highlights.
+- The Krewe highlight "GK parries the fast break" was re-cut: it used to start just after the save, and now shows the break and the save.
+
 ## 2026-10-12 — Positions as acronyms (55fa811..55fa811)
 
 - Player positions are now written the way coaches say them: GK, LB, LCB, RCB, RB, LM, RM, CM, ST and so on, in English and Spanish.

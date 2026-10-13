@@ -2,6 +2,14 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-12 — Coaches-only breakdown and a re-cut save clip (f3d2a85..f3d2a85)
+
+- `tools/build.mjs`: the published game file omits `coaches`. `{coaches}` is sealed to `opaque(nameKey, coaches/<slug>.json)` with `HMAC(PBKDF2(coach pw, tools/notes-kdf.json), "dfc-coach content")`. The build requires `private/.coach-password` (or `COACH_PASSWORD`) and rejects it if it equals the team password. The manifest gains `coachFile`.
+- App: `PublicGame` and `CoachContent` schemas. `notesCrypto` derives `contentRaw`, and `notes.tsx` stores it and exposes `contentKey` (stored keys without it are dropped). `site.loadCoaches` and the `useCoaches` hook; `Coaches` shows a locked screen; game-list and menu links hide unless unlocked. Notes KDF moved to `tools/notes-kdf.json`.
+- Verified: the team key opens 28 public files with no breakdown content, and opens 0 of 4 coach files. e2e covers the locked state, a wrong then right coach password, and all pages in EN/ES.
+- Clip `2026-10-03-krewe/03-gk-fast-break-save` re-timed from 58:40–59:15 to 58:00–58:35 (only that clip re-cut). Note: the 5-minute chunk files run about 10 s ahead of the full video.
+- Rollback: `git revert f3d2a85`, `npm run build`, push.
+
 ## 2026-10-12 — Positions as acronyms (55fa811..55fa811)
 
 - `app/src/lib/positions.ts`: acronym → {en, es} full names, plus `splitPositions()`. `RichText` wraps matches in `<abbr class="pos-abbr" data-full>` with a CSS tooltip and screen-reader text.
