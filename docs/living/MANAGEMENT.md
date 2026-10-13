@@ -2,6 +2,14 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-12 — Positions as acronyms (55fa811..55fa811)
+
+**Delivered.** All four games now use position acronyms throughout (385 passages updated, both languages), with the full name shown on hover or tap. Future breakdowns must follow the same convention: the build rejects spelled-out positions.
+
+**Decision.** Unit headings, pitch areas and group words ("the defenders") stay as words. A player whose side wasn't recorded is a general acronym (WM, FB, CB) rather than a guessed side.
+
+**Risk.** Low. Wording only; no change to security, hosting or site size.
+
 ## 2026-10-12 — Unit review page (6c36dbb..6c36dbb)
 
 **Delivered.** A fifth page per game: a review of the defensive, midfield and attacking units with positives, negatives and tagged improvements. Written for all four games in both languages. The analyst agent now produces it for every new game.

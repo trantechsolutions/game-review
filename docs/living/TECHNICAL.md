@@ -2,6 +2,15 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-12 — Positions as acronyms (55fa811..55fa811)
+
+- `app/src/lib/positions.ts`: acronym → {en, es} full names, plus `splitPositions()`. `RichText` wraps matches in `<abbr class="pos-abbr" data-full>` with a CSS tooltip and screen-reader text.
+- Game data: one-off `tools/legacy/acronyms.mjs` rewrote 385 Text values (unit names exempt).
+- `tools/validate.ts`: rejects spelled-out positions in EN/ES (unit names exempt). Agent instructions updated to match.
+- Tests: 20 unit tests (added acronym splitting and the validator rule); e2e passes in EN/ES.
+- Fix: two regexes had a literal backspace where `\b` was intended (from a scripted edit); repaired and scanned for control characters.
+- Rollback: `git revert 55fa811`, `npm run build`, push.
+
 ## 2026-10-12 — Unit review page (6c36dbb..6c36dbb)
 
 - `app/src/schema.ts`: required `unitReviews` = `{ intro, units: [defense, midfield, attack] }`. Each unit has `positions`, `summary`, `positives[]`/`negatives[]` (`{text, ev}`) and `improvements[]` (`{area, title, detail, ev}`, `area` ∈ `IMPROVEMENT_AREAS`). A refine enforces the unit order.

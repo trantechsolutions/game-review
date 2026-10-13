@@ -2,6 +2,11 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-12 — Positions as acronyms (55fa811..55fa811)
+
+- Player positions are now written the way coaches say them: GK, LB, LCB, RCB, RB, LM, RM, CM, ST and so on, in English and Spanish.
+- Not sure what one means? Hover over it or tap it, and the full name appears (for example "LCB" shows "Left centre-back", or "Central izquierdo" in Spanish).
+
 ## 2026-10-12 — Unit review page (6c36dbb..6c36dbb)
 
 - Every game has a new **Unit review** page, in English and Spanish. It looks at the defence, the midfield and the attack separately: what went well, what went wrong, and how to improve, such as marking, reading the play, body shape and formation.
