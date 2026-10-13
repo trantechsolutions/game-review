@@ -2,11 +2,12 @@
 //  - accessKey: sent with every notes call; the database keeps only its SHA-256 (keyHash) and
 //    never sees the coach password
 //  - encKey: AES-256-GCM key for note contents
+//  - contentKey: AES-256-GCM key for the coaches' breakdown files (tools/build.mjs derives the same)
 //  - scope(slug): an opaque per-game id, so the database never stores game names.
 // Shared with tools/notes/*.mjs (Node 22 has the same WebCrypto API).
 import { aesKey, b64, hmac, open, pbkdf2, seal, toB64, type Bytes } from "./crypto";
 
-export interface NotesKeys { accessKey: string; encRaw: Bytes }
+export interface NotesKeys { accessKey: string; encRaw: Bytes; contentRaw: Bytes }
 
 const b64url = (u: Bytes) => toB64(u).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 const hex = (u: ArrayBuffer) => [...new Uint8Array(u)].map(b => b.toString(16).padStart(2, "0")).join("");
@@ -16,6 +17,7 @@ export async function deriveNotesKeys(password: string, kdf: { salt: string; ite
   return {
     accessKey: b64url(new Uint8Array(await hmac(master, "dfc-notes auth"))),
     encRaw: new Uint8Array(await hmac(master, "dfc-notes enc")),
+    contentRaw: new Uint8Array(await hmac(master, "dfc-coach content")),
   };
 }
 

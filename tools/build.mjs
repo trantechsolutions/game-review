@@ -12,6 +12,7 @@
 //
 //   npm run build       (vite build, then this; password from private/.site-password or SITE_PASSWORD)
 import { spawnSync } from "node:child_process";
+import { createHmac, pbkdf2Sync } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -37,6 +38,19 @@ const v = spawnSync(process.execPath, [join(ROOT, "node_modules", "tsx", "dist",
 if (v.status !== 0) fail("Validation failed; nothing was built.");
 
 const keys = keysFrom(password, KDF);
+
+// The coaches' breakdown is sealed with a key from the coach password, so the team password can't open it.
+// Same derivation as app/src/lib/notesCrypto.ts: PBKDF2 → master → HMAC("dfc-coach content").
+const COACH_PW_FILE = join(ROOT, "private", ".coach-password");
+const coachPassword = (process.env.COACH_PASSWORD
+  || (existsSync(COACH_PW_FILE) ? readFileSync(COACH_PW_FILE, "utf8") : "")).replace(/^﻿/, "").trim();
+if (!coachPassword) fail(`No coach password. Put it on one line in ${relative(ROOT, COACH_PW_FILE)} (never committed).`);
+if (coachPassword === password) fail("The coach password must differ from the team password, or anyone on the team could open the coaches' breakdown.");
+const NOTES_KDF = JSON.parse(readFileSync(join(ROOT, "tools", "notes-kdf.json"), "utf8"));
+const coachMaster = pbkdf2Sync(coachPassword, Buffer.from(NOTES_KDF.salt, "base64"), NOTES_KDF.iterations, 32, "sha256");
+const coachKey = createHmac("sha256", coachMaster).update("dfc-coach content").digest();
+const coachKeys = { key: coachKey, ivKey: createHmac("sha256", coachKey).update("dfc-film iv derivation").digest() };
+
 const site = JSON.parse(readFileSync(join(DATA, "site.json"), "utf8"));
 const games = readdirSync(join(DATA, "games")).filter(f => f.endsWith(".json")).sort()
   .map(f => JSON.parse(readFileSync(join(DATA, "games", f), "utf8")));
@@ -64,10 +78,14 @@ for (const g of games) {
     manifest.clips[`${g.slug}/${c.id}`] = { file: name, bytes };
     clipBytes += bytes; clipCount++;
   }
-  // The full-game video path stays on this PC.
-  const published = { ...g, highlights: { ...g.highlights, source: "" } };
+  // The full-game video path stays on this PC; the coaches' breakdown goes in its own coach-key file.
+  const { coaches, ...rest } = g;
+  const published = { ...rest, highlights: { ...g.highlights, source: "" } };
   const { name } = put(`data/${g.slug}.json`, Buffer.from(JSON.stringify(published), "utf8"));
-  manifest.games.push({ slug: g.slug, date: g.date, time: g.time, opponent: g.opponent, us: g.score.us, them: g.score.them, context: g.listContext, file: name });
+  const coachPath = `coaches/${g.slug}.json`;
+  const coachFile = opaque(keys.nameKey, coachPath);
+  writeFileSync(join(OUT, coachFile), seal(coachKeys, coachPath, Buffer.from(JSON.stringify({ coaches }), "utf8")));
+  manifest.games.push({ slug: g.slug, date: g.date, time: g.time, opponent: g.opponent, us: g.score.us, them: g.score.them, context: g.listContext, file: name, coachFile });
 }
 // Game-list order: newest first; the app keeps this order for same-day games.
 manifest.games.sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time));

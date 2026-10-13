@@ -80,7 +80,8 @@ if (cmd === "setup-sql") {
   const set = await sb.rpc("notes_set_key", { p_key: keys.accessKey, p_new_hash: await keyHash(next.accessKey) });
   if (set.error) fail(`notes re-encrypted but switching the key failed: ${set.error.message}. Run rotate again.`);
   renameSync(NEW_PW, PW);
-  console.log(`✓ re-encrypted ${n} notes; the new coach password is live. Coaches must unlock again with it.`);
+  console.log(`✓ re-encrypted ${n} notes; the new coach password is live for notes. Coaches must unlock again with it.
+Now run npm run build, then commit and push public/, so the coaches' breakdown opens with the new password too.`);
 } else {
   fail("usage: npx tsx tools/notes/coach.ts setup-sql | check | rotate");
 }

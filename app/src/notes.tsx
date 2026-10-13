@@ -13,19 +13,20 @@ export interface Note extends NoteBody { id: string; updatedAt: string }
 
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
-interface Keys { accessKey: string; encRaw: Bytes }
+interface Keys { accessKey: string; encRaw: Bytes; contentRaw: Bytes }
 
 const loadKeys = (): Keys | null => {
   try {
     const s = sessionStorage.getItem(STORE) || localStorage.getItem(STORE);
     if (!s) return null;
-    const { a, e } = JSON.parse(s);
-    return { accessKey: a, encRaw: b64(e) };
+    const { a, e, c } = JSON.parse(s);
+    if (!c) return null; // stored before the coaches' breakdown key existed: unlock again
+    return { accessKey: a, encRaw: b64(e), contentRaw: b64(c) };
   } catch { return null; }
 };
 const saveKeys = (k: Keys, remember: boolean) => {
   try {
-    const s = JSON.stringify({ a: k.accessKey, e: toB64(k.encRaw) });
+    const s = JSON.stringify({ a: k.accessKey, e: toB64(k.encRaw), c: toB64(k.contentRaw) });
     sessionStorage.setItem(STORE, s);
     if (remember) localStorage.setItem(STORE, s);
   } catch { /* storage blocked: unlocked for this page only */ }
@@ -36,6 +37,8 @@ export class BadCoachPassword extends Error {}
 
 interface NotesApi {
   signedIn: boolean;
+  /** Opens the coaches' breakdown files; null until the coach area is unlocked. */
+  contentKey: Bytes | null;
   signIn: (password: string, remember: boolean) => Promise<void>;
   signOut: () => Promise<void>;
   list: (slug: string) => Promise<Note[]>;
@@ -86,7 +89,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => { clearKeys(); setKeys(null); setDrawer(null); }, []);
 
   const api = useMemo<NotesApi>(() => ({
-    signedIn: !!keys, signIn, signOut, version, drawer, loginOpen, setLoginOpen,
+    signedIn: !!keys, contentKey: keys?.contentRaw ?? null, signIn, signOut, version, drawer, loginOpen, setLoginOpen,
     openDrawer: (slug, anchor, label) => setDrawer({ slug, anchor, label }),
     closeDrawer: () => setDrawer(null),
     list: async slug => {

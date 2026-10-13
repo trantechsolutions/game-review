@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { T } from "../components/RichText";
 import { useI18n } from "../i18n";
+import { useNotes } from "../notes";
 import { useSite } from "../site";
 
 const outcome = (us: number, them: number) => (us > them ? "W" : us < them ? "L" : "D");
@@ -9,6 +10,7 @@ const LETTER_ES = { W: "G", D: "E", L: "P" } as const;
 export function GameList() {
   const { manifest } = useSite();
   const { t, lang, locale } = useI18n();
+  const coach = useNotes().signedIn; // the coaches' breakdown opens only with the coach password
   // Newest first; same-day games keep manifest order.
   const games = manifest.games.map((g, i) => ({ ...g, i })).sort((a, b) => b.date.localeCompare(a.date) || a.i - b.i);
   const w = games.filter(g => outcome(g.us, g.them) === "W").length;
@@ -50,7 +52,7 @@ export function GameList() {
                 </div>
                 <div className="links">
                   <Link className="pbp" to={`${base}/play-by-play`}>{t("playByPlay")}</Link>
-                  <Link className="coach" to={`${base}/coaches`}>{t("coachesBreakdown")}</Link>
+                  {coach ? <Link className="coach" to={`${base}/coaches`}>{t("coachesBreakdown")}</Link> : null}
                   <Link className="units" to={`${base}/units`}>{t("unitReview")}</Link>
                   <Link className="hl" to={`${base}/highlights`}>{t("highlights")}</Link>
                   <Link className="rep" to={`${base}/report`}>{t("matchReport")}</Link>

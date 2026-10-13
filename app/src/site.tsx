@@ -1,11 +1,13 @@
 // Unlocks the site with the team password and loads the encrypted manifest, games and clips.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { aesKey, b64, keyStore, open, opaqueName, pbkdf2, readKdf, type Bytes } from "./lib/crypto";
-import { Game, Manifest } from "./schema";
+import { CoachContent, Manifest, PublicGame, type Game } from "./schema";
 
 interface Site {
   manifest: Manifest;
-  loadGame: (slug: string) => Promise<Game>;
+  loadGame: (slug: string) => Promise<PublicGame>;
+  /** The coaches' breakdown, opened with the coach-password key. */
+  loadCoaches: (slug: string, contentKey: Bytes) => Promise<Game["coaches"]>;
   loadClip: (slug: string, id: string, onStage?: (s: "fetch" | "decrypt") => void) => Promise<string>;
   lock: () => void;
 }
@@ -77,7 +79,8 @@ export function useUnlock() {
 }
 
 export function SiteContext({ keyObj, manifest, children }: { keyObj: CryptoKey; manifest: Manifest; children: ReactNode }) {
-  const games = useRef(new Map<string, Promise<Game>>());
+  const games = useRef(new Map<string, Promise<PublicGame>>());
+  const coaches = useRef(new Map<string, Promise<Game["coaches"]>>());
   const clips = useRef(new Map<string, string>());
 
   const value = useMemo<Site>(() => ({
@@ -87,9 +90,20 @@ export function SiteContext({ keyObj, manifest, children }: { keyObj: CryptoKey;
       if (!p) {
         const entry = manifest.games.find(g => g.slug === slug);
         if (!entry) return Promise.reject(new Error("not found"));
-        p = fetchSealed(keyObj, entry.file).then(u => Game.parse(json(u)));
+        p = fetchSealed(keyObj, entry.file).then(u => PublicGame.parse(json(u)));
         p.catch(() => games.current.delete(slug));
         games.current.set(slug, p);
+      }
+      return p;
+    },
+    loadCoaches: (slug, contentKey) => {
+      let p = coaches.current.get(slug);
+      if (!p) {
+        const entry = manifest.games.find(g => g.slug === slug);
+        if (!entry) return Promise.reject(new Error("not found"));
+        p = aesKey(contentKey).then(k => fetchSealed(k, entry.coachFile)).then(u => CoachContent.parse(json(u)).coaches);
+        p.catch(() => coaches.current.delete(slug));
+        coaches.current.set(slug, p);
       }
       return p;
     },

@@ -9,7 +9,8 @@ import { Highlights } from "./pages/Highlights";
 import { MatchReport } from "./pages/MatchReport";
 import { PlayByPlay } from "./pages/PlayByPlay";
 import { UnitReview } from "./pages/UnitReview";
-import type { Game } from "./schema";
+import { useCoaches } from "./pages/Coaches";
+import type { PublicGame } from "./schema";
 import { BadPassword, MissingData, SiteContext, useSite, useUnlock } from "./site";
 
 const PAGES = {
@@ -43,7 +44,7 @@ function AppBar() {
     <div className="appbar">
       <nav ref={nav} aria-label={t("allGames")}>
         <Link className="home" to="/">{manifest.us} <span>film</span></Link>
-        {slug ? (Object.keys(PAGES) as PageId[]).map(p => (
+        {slug ? (Object.keys(PAGES) as PageId[]).filter(p => p !== "coaches" || notes.signedIn).map(p => (
           <NavLink key={p} to={`/game/${slug}/${p}`}>{t(PAGES[p].key)}</NavLink>
         )) : null}
       </nav>
@@ -74,7 +75,8 @@ function GamePage() {
   const { loadGame, manifest } = useSite();
   const { t, tx, ev } = useI18n();
   const notes = useNotes();
-  const [state, setState] = useState<{ slug: string; game?: Game; error?: unknown }>({ slug });
+  const coaches = useCoaches(slug); // for note labels on coaches' sections
+  const [state, setState] = useState<{ slug: string; game?: PublicGame; error?: unknown }>({ slug });
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -107,15 +109,20 @@ function GamePage() {
       return c ? tx(c.label) : anchor;
     }
     const [pg, id] = anchor.slice("section:".length).split("/");
-    const C2 = g.coaches, R = g.report;
+    const R = g.report;
     const map: Record<string, string> = {
       "report/story": tx(R.story.title), "report/first-half": tx(R.halves[0].title), "report/second-half": tx(R.halves[1].title),
       "report/numbers": tx(R.numbers.title), "report/takeaways": tx(R.takeaways.title), "report/clips": tx(R.clips.title),
-      "coaches/priorities": tx(C2.priorities.title), "coaches/thirds": tx(C2.thirds.title), "coaches/units": tx(C2.units.title),
-      "coaches/plan": tx(C2.plan.title), "coaches/clips": tx(C2.clips.title),
     };
-    C2.thirds.blocks.forEach((b, i) => { map[`coaches/third-${i + 1}`] = tx(b.name); });
-    C2.units.items.forEach((u, i) => { map[`coaches/unit-${i + 1}`] = tx(u.name); });
+    const C2 = coaches.coaches;
+    if (C2) {
+      Object.assign(map, {
+        "coaches/priorities": tx(C2.priorities.title), "coaches/thirds": tx(C2.thirds.title), "coaches/units": tx(C2.units.title),
+        "coaches/plan": tx(C2.plan.title), "coaches/clips": tx(C2.clips.title),
+      });
+      C2.thirds.blocks.forEach((b, i) => { map[`coaches/third-${i + 1}`] = tx(b.name); });
+      C2.units.items.forEach((u, i) => { map[`coaches/unit-${i + 1}`] = tx(u.name); });
+    }
     for (const u of ["defense", "midfield", "attack"] as const) map[`units/${u}`] = t(`unit_${u}`);
     return map[`${pg}/${id}`] ?? anchor;
   };

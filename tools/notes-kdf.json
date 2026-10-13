@@ -1,0 +1,5 @@
+{
+  "_readme": "Key-derivation settings for the coach password (coach notes and the coaches' breakdown). Not secret. Changing them makes existing notes unreadable.",
+  "salt": "foq66j4u1iLA3WRLbh8m6g==",
+  "iterations": 600000
+}

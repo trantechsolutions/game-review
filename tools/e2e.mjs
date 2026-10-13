@@ -11,6 +11,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SHOTS = join(ROOT, "private", "e2e");
 mkdirSync(SHOTS, { recursive: true });
 const password = (process.env.SITE_PASSWORD || readFileSync(join(ROOT, "private", ".site-password"), "utf8")).replace(/^﻿/, "").trim();
+const coachPassword = (process.env.COACH_PASSWORD || readFileSync(join(ROOT, "private", ".coach-password"), "utf8")).replace(/^﻿/, "").trim();
 const PORT = 8123;
 
 const server = spawn("python", ["-m", "http.server", String(PORT), "-d", join(ROOT, "public"), "--bind", "127.0.0.1"], { stdio: "ignore" });
@@ -42,6 +43,27 @@ try {
   await page.screenshot({ path: join(SHOTS, "list-en.png"), fullPage: true });
   const slugs = await page.locator(".pg-list .links a.pbp").evaluateAll(as => as.map(a => a.getAttribute("href").split("/")[2]));
   console.log(`unlocked; ${slugs.length} games`);
+
+  // With only the team password, the coaches' breakdown is hidden and locked.
+  if (await page.locator(".pg-list .links a.coach").count()) problems.push("game list shows the coaches' breakdown before the coach area is unlocked");
+  await page.goto(`${base}#/game/${slugs[0]}/coaches`);
+  await page.locator(".locked").waitFor({ timeout: 20000 });
+  if (await page.locator(".pg-coaches").count()) problems.push("coaches' breakdown rendered without the coach password");
+  if (await page.locator(".appbar nav a", { hasText: /Coaches' breakdown/ }).count()) problems.push("menu shows the coaches' breakdown while locked");
+
+  // The coach area refuses a wrong coach password, then opens with the right one.
+  expect400 = true;
+  await page.locator(".locked button").click();
+  await page.fill("#coach-pw", "not the coach password");
+  await page.locator(".dialog button[type=submit]").click();
+  await page.locator(".dialog .msg").filter({ hasText: /didn't work|no funciona/ }).waitFor({ timeout: 30000 });
+  await page.waitForTimeout(1500); // console events arrive a little after the response
+  expect400 = false;
+  await page.fill("#coach-pw", coachPassword);
+  await page.locator(".dialog button[type=submit]").click();
+  await page.locator(".pg-coaches .zone").first().waitFor({ timeout: 30000 });
+  if (!(await page.locator(".appbar nav a", { hasText: /Coaches' breakdown/ }).count())) problems.push("menu hides the coaches' breakdown after unlocking");
+  console.log("coaches' breakdown: locked with the team password, opens with the coach password");
 
   const checks = {
     "play-by-play": async () => { const n = await page.locator(".pg-pbp tbody tr").count(); if (n < 5) throw new Error(`${n} rows`); },
@@ -108,18 +130,7 @@ try {
     await page.screenshot({ path: join(SHOTS, `mobile-${p}.png`), fullPage: false });
   }
 
-  // The coach area reaches Supabase and refuses a wrong coach password.
   await page.setViewportSize({ width: 1280, height: 900 });
-  expect400 = true;
-  await page.goto(`${base}#/game/${slugs[0]}/play-by-play`);
-  await page.getByRole("button", { name: /^(Coach|Entrenador)$/ }).click();
-  await page.fill("#coach-pw", "not the coach password");
-  await page.locator(".dialog button[type=submit]").click();
-  await page.locator(".dialog .msg").filter({ hasText: /didn't work|no funciona|notes service|servicio de notas/ }).waitFor({ timeout: 30000 });
-  console.log(`coach area refuses a wrong password (${await page.locator(".dialog .msg").textContent()})`);
-  await page.waitForTimeout(1500); // console events arrive a little after the response
-  expect400 = false;
-  await page.keyboard.press("Escape");
 
   // Lock clears the key.
   await page.getByRole("button", { name: /Bloquear|Lock/ }).click();

@@ -1,7 +1,7 @@
 import { T } from "../components/RichText";
 import { NoteButton, useNoteCounts } from "../components/Notes";
 import { useI18n, type Key } from "../i18n";
-import type { Game } from "../schema";
+import type { PublicGame as Game } from "../schema";
 import { useSite } from "../site";
 import { Toc, useDateLine } from "./shared";
 

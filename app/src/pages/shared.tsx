@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { NoteButton } from "../components/Notes";
 import { formatDate, useI18n } from "../i18n";
-import type { Game, GameEvent } from "../schema";
+import type { PublicGame as Game, GameEvent } from "../schema";
 
 type I18n = ReturnType<typeof useI18n>;
 

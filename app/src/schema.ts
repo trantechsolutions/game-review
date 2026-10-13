@@ -166,6 +166,12 @@ export const Game = z.object({
 }).strict();
 export type Game = z.infer<typeof Game>;
 
+// What is published: the team password opens the game file without the coaches' breakdown; the
+// coach password opens the breakdown, which is its own file.
+export const PublicGame = Game.omit({ coaches: true });
+export type PublicGame = z.infer<typeof PublicGame>;
+export const CoachContent = z.object({ coaches: Game.shape.coaches }).strict();
+
 // The decrypted manifest: the game list plus where each encrypted file lives.
 export const Manifest = z.object({
   us: z.string(),                   // our short team name; kept out of the public app code
@@ -173,6 +179,7 @@ export const Manifest = z.object({
   games: z.array(z.object({
     slug: z.string(), date: z.string(), time: z.string(), opponent: z.string(),
     us: z.number(), them: z.number(), context: Text, file: z.string(),
+    coachFile: z.string(),          // the coaches' breakdown, sealed with the coach-password key
   }).strict()),
   clips: z.record(z.string(), z.object({ file: z.string(), bytes: z.number() }).strict()), // "<slug>/<clip id>"
 }).strict();

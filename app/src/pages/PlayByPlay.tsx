@@ -3,7 +3,7 @@ import { Md, T } from "../components/RichText";
 import { NoteButton, useNoteCounts } from "../components/Notes";
 import { useI18n, type Key } from "../i18n";
 import { gameMinute, mmss, videoSec, workingClip } from "../lib/time";
-import type { Game, GameEvent } from "../schema";
+import type { PublicGame as Game, GameEvent } from "../schema";
 import { useSite } from "../site";
 import { eventLabel, useDateLine } from "./shared";
 

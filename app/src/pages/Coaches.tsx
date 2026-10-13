@@ -1,7 +1,9 @@
 import { T } from "../components/RichText";
 import { NoteButton, useNoteCounts } from "../components/Notes";
 import { useI18n, type Key } from "../i18n";
-import type { Game, Priority } from "../schema";
+import { useEffect, useState } from "react";
+import { useNotes } from "../notes";
+import type { Game, Priority, PublicGame } from "../schema";
 import { useSite } from "../site";
 import { SecHead, Toc } from "./shared";
 
@@ -17,7 +19,40 @@ function Evs({ ev }: { ev: string[] }) {
   return ev.length ? <div className="evs">{ev.map((e, i) => <span key={i}>{halfRef(e)}</span>)}</div> : null;
 }
 
-export function Coaches({ game: g }: { game: Game }) {
+/** The coaches' breakdown is in its own file, sealed with the coach-password key. */
+export function useCoaches(slug: string) {
+  const { contentKey } = useNotes();
+  const { loadCoaches } = useSite();
+  const [state, setState] = useState<{ coaches?: Game["coaches"]; error?: unknown }>({});
+  useEffect(() => {
+    if (!contentKey) { setState({}); return; }
+    let live = true;
+    loadCoaches(slug, contentKey).then(coaches => live && setState({ coaches }), error => live && setState({ error }));
+    return () => { live = false; };
+  }, [slug, contentKey, loadCoaches]);
+  return { locked: !contentKey, ...state };
+}
+
+export function Coaches({ game }: { game: PublicGame }) {
+  const { t } = useI18n();
+  const { setLoginOpen } = useNotes();
+  const { locked, coaches, error } = useCoaches(game.slug);
+  if (locked) {
+    return (
+      <div className="status wrap locked">
+        <span className="eyebrow">{t("coachesBreakdown")}</span>
+        <h1>{t("coachesOnly")}</h1>
+        <p className="sub">{t("coachesOnlyHelp")}</p>
+        <button type="button" className="btn-solid" onClick={() => setLoginOpen(true)}>{t("signIn")}</button>
+      </div>
+    );
+  }
+  if (error) return <div className="status wrap" role="status"><p>{t("loadFailed")}</p></div>;
+  if (!coaches) return <div className="status wrap" role="status"><p>{t("loading")}</p></div>;
+  return <CoachesBody game={{ ...game, coaches }} />;
+}
+
+function CoachesBody({ game: g }: { game: Game }) {
   const { manifest } = useSite();
   const { t, tx } = useI18n();
   const count = useNoteCounts(g.slug);

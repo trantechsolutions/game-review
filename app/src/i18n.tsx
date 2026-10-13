@@ -91,6 +91,8 @@ const en = {
   // notes
   coach: "Coach",
   coachSignIn: "Coach area",
+  coachesOnly: "Coaches only",
+  coachesOnlyHelp: "The coaches' breakdown is for the coaching staff. Unlock the coach area with the coach password to read it.",
   coachPassword: "Coach password",
   coachSignInHelp: "Coaches only. Enter the coach password to read and write notes. Notes are encrypted on this device before they're saved.",
   signIn: "Unlock",
@@ -201,6 +203,8 @@ const es: Record<Key, string> = {
   tag_Defending: "Defensa", tag_Card: "Tarjeta", "tag_Set piece": "Balón parado",
   coach: "Entrenador",
   coachSignIn: "Área de entrenadores",
+  coachesOnly: "Solo entrenadores",
+  coachesOnlyHelp: "El análisis de los entrenadores es para el cuerpo técnico. Desbloquea el área de entrenadores con la contraseña de entrenadores para leerlo.",
   coachPassword: "Contraseña de entrenadores",
   coachSignInHelp: "Solo entrenadores. Introduce la contraseña de entrenadores para leer y escribir notas. Las notas se cifran en este dispositivo antes de guardarse.",
   signIn: "Desbloquear",

@@ -46,6 +46,8 @@ button { font-family: inherit; }
 .wrap { max-width: 1080px; margin-inline: auto; }
 .sub { color: var(--muted); max-width: 66ch; }
 .status { padding: 64px 0; color: var(--muted); display: grid; gap: 14px; justify-items: start; }
+.status.locked h1 { font: 900 clamp(2.2rem, 7vw, 3.6rem)/0.95 var(--display); text-transform: uppercase; color: var(--ink); }
+.status.locked .sub { max-width: 52ch; }
 .btn-line {
   font: 600 0.82rem/1 var(--body); padding: 9px 13px; border-radius: 999px; border: 1px solid var(--line-strong);
   background: transparent; color: var(--ink); cursor: pointer; text-decoration: none; white-space: nowrap;

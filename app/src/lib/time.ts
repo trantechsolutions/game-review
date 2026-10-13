@@ -1,4 +1,4 @@
-import type { Game, GameEvent } from "../schema";
+import type { PublicGame as Game, GameEvent } from "../schema";
 
 export const sec = (c: string) => c.split(":").map(Number).reduce((a, b) => a * 60 + b, 0);
 export const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;

@@ -2,7 +2,7 @@
 
 A password-protected game review app, published with GitHub Pages. The app's code is public, but it holds no game content. Every game, clip and the game list are encrypted. Without the team password, nothing here is readable.
 
-Each game has five pages (play-by-play, match report, coaches' breakdown, unit review, highlights), in English and Spanish. The unit review covers the defensive, midfield and attacking units: positives, negatives, and how to improve (marking, reading the play, body shape, formation and more). Coaches unlock a coach area with a separate coach password and leave notes on a game, a section, a clip or a single moment.
+Each game has five pages (play-by-play, match report, coaches' breakdown, unit review, highlights), in English and Spanish. The unit review covers the defensive, midfield and attacking units: positives, negatives, and how to improve (marking, reading the play, body shape, formation and more). Coaches unlock a coach area with a separate coach password. It opens the coaches' breakdown, which the team password can't, and lets coaches leave notes on a game, a section, a clip or a single moment.
 
 ## How it works
 
@@ -11,6 +11,7 @@ Each game has five pages (play-by-play, match report, coaches' breakdown, unit r
 - `npm run build` checks every game file, builds the app, then encrypts the games, the game list and the clips into `public/` with AES-256-GCM. The key comes from the team password via PBKDF2-SHA256 with 600,000 iterations. Every encrypted file gets an opaque name, and the build fails if a team, opponent or game name shows up in the readable app files.
 - Only `public/` and the source are committed. On push to `main`, GitHub Actions checks that `public/` holds only the app shell and encrypted files, then publishes it.
 - In the browser, the password derives the key, which finds and decrypts the game list, then each game and each clip as it's opened.
+- The coaches' breakdown is a separate file per game, encrypted with a key derived from the coach password (`private/.coach-password`, read by the build). The team password can't open it, and the app only shows it once the coach area is unlocked.
 
 Anyone can download `public/` and guess passwords offline, so use a long passphrase (four or more random words).
 
@@ -23,7 +24,7 @@ app/                       the React app (Vite, TypeScript)
   src/config.ts            Supabase project and coach-notes settings (public)
 private/                   (not in git)
   .site-password           the team password, on one line
-  .coach-password          the coach-notes password, on one line
+  .coach-password          the coach password (coach area: notes and the coaches' breakdown), on one line
   notes-setup.sql          generated database setup (tools/notes/coach.ts setup-sql)
   data/site.json           team name
   data/games/<slug>.json   one file per game, English and Spanish
@@ -63,7 +64,7 @@ Setup (once):
 3. In Supabase, open SQL Editor, paste that file and run it.
 4. Run `npx tsx tools/notes/coach.ts check`. It saves, reads and deletes a test note, and confirms a wrong key is refused.
 
-To change the coach password, put the new one in `private/.coach-password.new` and run `npx tsx tools/notes/coach.ts rotate`. It re-encrypts every note and switches the database to the new key. Coaches then unlock with the new password.
+To change the coach password, put the new one in `private/.coach-password.new` and run `npx tsx tools/notes/coach.ts rotate`. It re-encrypts every note and switches the database to the new key. Then run `npm run build`, commit and push, so the coaches' breakdown is re-encrypted too. Coaches then unlock with the new password.
 
 The free Supabase plan pauses a project after about a week with no activity. Unpause it from the Supabase dashboard; nothing is lost.
 
