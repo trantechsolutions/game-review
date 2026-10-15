@@ -2,6 +2,11 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-15 — Clips moved to Cloudflare R2 (fe1cc7d..fe1cc7d)
+
+- Nothing changes for viewers: same password, same pages, and the highlights play the same way.
+- Behind the scenes, the highlight videos now live in Cloudflare's storage instead of on GitHub. That leaves room for about ten times as many games.
+
 ## 2026-10-15 — 26 September game and two re-cut clips (ab4602d..5221670)
 
 - The 7–0 home win from 26 September is now on the site, in English and Spanish, with all five pages and a highlight clip for each goal.

@@ -2,6 +2,14 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-15 — Clips moved to Cloudflare R2 (fe1cc7d..fe1cc7d)
+
+**Delivered.** Highlight clips moved from GitHub Pages (1 GB limit, about 445 MB used) to a Cloudflare R2 bucket on the free plan (10 GB storage, free downloads). The published site is now about 1 MB. Capacity goes from roughly 10 games to roughly 100.
+
+**Decisions.** Clips keep the same encryption and opaque names, so the bucket only holds unreadable data. The bucket's address is stored only inside the encrypted game list. Access is restricted by a CORS policy, and the upload key only has read/write access to this one bucket.
+
+**Risk.** The public r2.dev address is rate-limited by Cloudflare; if clips ever load slowly, connect a custom domain to the bucket. An API token was briefly exposed in a tool's error output during setup and was rolled immediately. Clips already committed remain in the repository history unless it is rewritten.
+
 ## 2026-10-15 — 26 September game and two re-cut clips (ab4602d..5221670)
 
 **Delivered.** Fifth game added (the first broken down without an events log; every event was timed from the video). Scorer positions were confirmed by the coach. Two mistimed BRSC clips were re-cut after a frame-by-frame review.

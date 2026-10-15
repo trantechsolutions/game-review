@@ -2,6 +2,14 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-15 — Clips moved to Cloudflare R2 (fe1cc7d..fe1cc7d)
+
+- `tools/lib/r2.mjs` (`@aws-sdk/client-s3` 3.700.0): `loadR2` reads `private/.r2.json` (`//` comment lines allowed; errors never echo contents; rejects the placeholder URL). The client provides `list` (only `^[0-9a-f]{20}\.bin$` keys), `put` (skips when size and MD5 ETag match; `Cache-Control: no-cache` because names survive re-cuts) and `prune`.
+- `tools/build.mjs`: R2 settings and the bucket listing are checked before `public/` is cleared. Clips are sealed exactly as before (`games/<slug>/clips/<id>.mp4` path); manifest `clips[*].file` is now the absolute R2 URL. Without `.r2.json` the build falls back to `public/`.
+- Bucket CORS: GET/HEAD from the Pages origin and local preview/dev/test origins. Verified: those origins get `Access-Control-Allow-Origin`, others don't.
+- First upload: 30 clips; `public/` went from 445 MB to 1 MB. e2e passes, with the clip decrypted from R2.
+- Rollback: delete `private/.r2.json`, `npm run build`, push (clips return to `public/`).
+
 ## 2026-10-15 — 26 September game and two re-cut clips (ab4602d..5221670)
 
 - New game `private/data/games/2026-09-26-gcufc.json` (18 events from the video, 7 clips, 38 MB). Scorer positions applied from the coach: ST 5'/16', RM pen 29', LM 33', ST 37', RCB 40'/46'. Clip ids renamed to match.
