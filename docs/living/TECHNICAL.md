@@ -2,6 +2,13 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-15 — Second 26 September game (786eec1..786eec1)
+
+- New private game file (slug `2026-09-26-hfc`), 30 events, 7 clips; scorer positions and the booked CM set from coach confirmation, clip ids renamed to match (`02-st-15`, `03-lm-29-counter`).
+- `public/`: one modified and two new `.bin` (manifest, game data, coaches' breakdown). R2: 7 clips uploaded on the first build; the rename re-uploaded 2 and pruned 2.
+- Validation passes for all 6 games, vitest 20/20, e2e passes (6 games, coach lock, clip decrypted from R2, EN/ES pages).
+- Rollback: revert 786eec1 and run `npm run build` (prunes the game's clips from R2) after removing the private game file.
+
 ## 2026-10-15 — Clips moved to Cloudflare R2 (fe1cc7d..fe1cc7d)
 
 - `tools/lib/r2.mjs` (`@aws-sdk/client-s3` 3.700.0): `loadR2` reads `private/.r2.json` (`//` comment lines allowed; errors never echo contents; rejects the placeholder URL). The client provides `list` (only `^[0-9a-f]{20}\.bin$` keys), `put` (skips when size and MD5 ETag match; `Cache-Control: no-cache` because names survive re-cuts) and `prune`.

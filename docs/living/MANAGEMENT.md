@@ -2,6 +2,14 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-15 — Second 26 September game (786eec1..786eec1)
+
+**Delivered.** One new game: full play-by-play, match report, coaches' breakdown, unit reviews and 7 highlight clips (about 37 MB, stored in R2). The site now holds 6 games; R2 use is about 482 MB of 10 GB.
+
+**Decisions.** Built from the video and the Ollie final-score screen, with no events log. All goal minutes match Ollie. The yellow card is logged at the only matching stoppage (59' on the video, Ollie 58'). Scorer positions and the booked position (CM) were confirmed by the coach.
+
+**Open.** Only the goals could be placed as shots; the remaining shots in Ollie's totals are not logged. Who scored the opponent's corner goal, and whether their free kick was direct, can't be read from the wide camera.
+
 ## 2026-10-15 — Clips moved to Cloudflare R2 (fe1cc7d..fe1cc7d)
 
 **Delivered.** Highlight clips moved from GitHub Pages (1 GB limit, about 445 MB used) to a Cloudflare R2 bucket on the free plan (10 GB storage, free downloads). The published site is now about 1 MB. Capacity goes from roughly 10 games to roughly 100.
