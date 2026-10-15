@@ -2,6 +2,12 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-15 — 26 September game and two re-cut clips (ab4602d..5221670)
+
+**Delivered.** Fifth game added (the first broken down without an events log; every event was timed from the video). Scorer positions were confirmed by the coach. Two mistimed BRSC clips were re-cut after a frame-by-frame review.
+
+**Open.** Two goal minutes differ between Ollie and the video (36'/37' vs 37'/40'); the site uses the video and notes the difference. Four non-goal clips across the season remain unconfirmed because the camera is too far to show the moment. The site is at about 445 MB of the 1 GB Pages limit; moving clips to Cloudflare R2 is next.
+
 ## 2026-10-15 — Breakdowns from a video link, stats credited to Ollie (6e3ecee..b1394ad)
 
 **Delivered.** A game can now be analysed from two inputs: the Reeplayer video link and the Ollie stats screen (or export). New tools download the full video and find likely moments from the referee's whistle and crowd noise. The analyst then confirms each moment on still frames and checks the shot totals against Ollie. Two games' pages had credited the stats to Reeplayer; they now credit Ollie.

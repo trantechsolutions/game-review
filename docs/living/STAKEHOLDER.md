@@ -2,6 +2,11 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-15 — 26 September game and two re-cut clips (ab4602d..5221670)
+
+- The 7–0 home win from 26 September is now on the site, in English and Spanish, with all five pages and a highlight clip for each goal.
+- Two highlights from the 11 October game were re-cut so they actually show the moment described: the cut-back chance, and the break that led to the corner and header.
+
 ## 2026-10-15 — Breakdowns from a video link, stats credited to Ollie (6e3ecee..b1394ad)
 
 - The match numbers on every game (score, scorers, shots, possession and cards) are now credited to Ollie, where they are recorded. The numbers themselves haven't changed.

@@ -2,6 +2,14 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-15 — 26 September game and two re-cut clips (ab4602d..5221670)
+
+- New game `private/data/games/2026-09-26-gcufc.json` (18 events from the video, 7 clips, 38 MB). Scorer positions applied from the coach: ST 5'/16', RM pen 29', LM 33', ST 37', RCB 40'/46'. Clip ids renamed to match.
+- `2026-10-11-brsc` clips re-timed: `01-cut-back-chance` 11:04–11:49 → 11:44–12:02, `03-rm-break-corner` 29:40–31:35 → 28:30–29:28. Only those clips were re-cut.
+- 5221670: the stats attribution for this game was briefly changed to Reeplayer and has been restored to Ollie (consistent with b1394ad). Reeplayer remains for the camera only.
+- Build: 5 games, 30 clips, `public/` 445 MB. e2e passes.
+- Rollback: `git revert 5221670 ab4602d`, `npm run build`, push.
+
 ## 2026-10-15 — Breakdowns from a video link, stats credited to Ollie (6e3ecee..b1394ad)
 
 - `tools/reeplayer.mjs`: `link.reeplayer.com` → branch.io page → `share.reeplayer.com/shared/<id>`; reads `file_url` (Mux `highest.mp4`, 1080p), `og:title`, `duration`. Downloads to `~/Downloads/reeplayer_<date>_<hhmm>/full_game.mp4` via a `.part` file with HTTP Range resume; `--info` resolves only. Last stdout line is JSON.
