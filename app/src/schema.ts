@@ -91,7 +91,7 @@ export const Game = z.object({
     kickoff: z.object({ 1: z.number(), 2: z.number() }).strict(),  // seconds into the full-game video
     halfLength: z.object({ 1: Clock, 2: Clock }).strict(),
     // How the "Game" minute column counts: "elapsed" = whole minutes played, "running" = the
-    // minute in progress (Reeplayer's timeline), null = column hidden.
+    // minute in progress (Ollie's timeline), null = column hidden.
     minute: z.enum(["elapsed", "running"]).nullable(),
     workingClips: z.object({ step: z.number(), len: z.number(), count: z.number(), prefix: z.string() }).strict(),
   }).strict(),

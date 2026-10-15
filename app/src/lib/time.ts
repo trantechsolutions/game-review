@@ -10,7 +10,7 @@ export const videoSec = (g: Game, e: Pick<GameEvent, "h" | "c">) => g.video.kick
 const HALF = 30 * 60;
 export const matchSec = (e: Pick<GameEvent, "h" | "c">) => (e.h === 1 ? 0 : HALF) + sec(e.c);
 
-/** The "Game" column. "running" counts the minute in progress, as Reeplayer's timeline does. */
+/** The "Game" column. "running" counts the minute in progress, as Ollie's timeline does. */
 export function gameMinute(g: Game, e: Pick<GameEvent, "h" | "c">): number | null {
   if (!g.video.minute) return null;
   const s = matchSec(e);
