@@ -2,6 +2,16 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-15 — Breakdowns from a video link, stats credited to Ollie (6e3ecee..b1394ad)
+
+- `tools/reeplayer.mjs`: `link.reeplayer.com` → branch.io page → `share.reeplayer.com/shared/<id>`; reads `file_url` (Mux `highest.mp4`, 1080p), `og:title`, `duration`. Downloads to `~/Downloads/reeplayer_<date>_<hhmm>/full_game.mp4` via a `.part` file with HTTP Range resume; `--info` resolves only. Last stdout line is JSON.
+- `tools/scan_tape.py` (numpy + ffmpeg): `cues` decodes mono 16 kHz audio; whistle = spectral peak 3–4.8 kHz, ≥38 dB above band median, ≥90% of energy in 1.5–5 kHz, ≥100 ms, runs merged within 1.5 s (`long` ≥0.5 s). Crowd = 0.5 s RMS minus a 60 s rolling median, smoothed over 3 s, top 30 spaced 20 s apart. `sheets` tiles frames (`--at` or `--from/--to`, default 2 s, 5×4) with drawtext timestamps. `chunks` stream-copies the 290/300 s working files in the existing `clip_NN_<mm-ss>_to_<mm-ss>.mp4` naming and prints `video.workingClips`.
+- Tuned on the 2026-10-11 tape: whistles at both kick-offs, half time, all three goal restarts and the 37' yellow card; crowd peaks on two of three goals.
+- Stats attribution Reeplayer → Ollie: comments in `app/src/schema.ts` and `app/src/lib/time.ts`; game data (private) updated in two games (44 strings EN/ES). `public/` rebuilt.
+- Analyst agent (local, excluded from git) now takes a link plus Ollie stats; the events log is optional.
+- Verified: 20 unit tests, `npm run build` (4 games validated, 23 clips, 406 MB), e2e EN/ES pass.
+- Rollback: `git revert b1394ad 6e3ecee`, `npm run build`, push.
+
 ## 2026-10-12 — Coaches-only breakdown and a re-cut save clip (f3d2a85..f3d2a85)
 
 - `tools/build.mjs`: the published game file omits `coaches`. `{coaches}` is sealed to `opaque(nameKey, coaches/<slug>.json)` with `HMAC(PBKDF2(coach pw, tools/notes-kdf.json), "dfc-coach content")`. The build requires `private/.coach-password` (or `COACH_PASSWORD`) and rejects it if it equals the team password. The manifest gains `coachFile`.

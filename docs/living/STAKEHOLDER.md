@@ -2,6 +2,11 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-15 — Breakdowns from a video link, stats credited to Ollie (6e3ecee..b1394ad)
+
+- The match numbers on every game (score, scorers, shots, possession and cards) are now credited to Ollie, where they are recorded. The numbers themselves haven't changed.
+- New games can now be broken down from just the game's video link and the Ollie stats, so a written list of match events is no longer needed.
+
 ## 2026-10-12 — Coaches-only breakdown and a re-cut save clip (f3d2a85..f3d2a85)
 
 - The coaches' breakdown is now for coaches only. It appears after the coach area is unlocked with the coach password. Players and parents still see the play-by-play, match report, unit review and highlights.

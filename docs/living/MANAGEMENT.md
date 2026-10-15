@@ -2,6 +2,18 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-15 — Breakdowns from a video link, stats credited to Ollie (6e3ecee..b1394ad)
+
+**Delivered.** A game can now be analysed from two inputs: the Reeplayer video link and the Ollie stats screen (or export). New tools download the full video and find likely moments from the referee's whistle and crowd noise. The analyst then confirms each moment on still frames and checks the shot totals against Ollie. Two games' pages had credited the stats to Reeplayer; they now credit Ollie.
+
+**Decision.** Without an events log, Ollie's goal and card minutes are the fixed reference points, and the shot count must reconcile with Ollie's totals. Shots the video can't place are reported, never invented. The tools run on the coach's PC; the full video never enters the repository.
+
+**Risk.** A breakdown built from the video alone will have thinner build-up detail than one built from a hand-written log. The sound cues miss some moments (on the test game: the first goal's crowd noise, and the early red card), so the frame sweep is still needed. The link lookup depends on Reeplayer's share page layout, which could change without notice.
+
+**Effort.** About one day: link resolver, cue finder, contact sheets, working-file cutter, and the agent update. It was tuned against an already-analysed game.
+
+**Open.** A first full breakdown on a new game using only the link and Ollie. A tracked legacy script (`tools/legacy/acronyms.mjs`, from 55fa811) still contains opponent short names in plain text and should be scrubbed.
+
 ## 2026-10-12 — Coaches-only breakdown and a re-cut save clip (f3d2a85..f3d2a85)
 
 **Delivered.** The coaches' breakdown is encrypted with a key from the coach password, separate from the team password, and hidden in the app until the coach area is unlocked. A review of the non-goal highlight clips found the Krewe fast-break save clip mistimed; it was re-cut and checked against the full video.
