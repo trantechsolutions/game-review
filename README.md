@@ -68,13 +68,32 @@ To change the coach password, put the new one in `private/.coach-password.new` a
 
 The free Supabase plan pauses a project after about a week with no activity. Unpause it from the Supabase dashboard; nothing is lost.
 
+## Clip storage (Cloudflare R2)
+
+Highlight clips are stored in a Cloudflare R2 bucket rather than in `public/`: R2's free plan has 10 GB of storage and free downloads, against GitHub Pages' 1 GB. They are encrypted exactly as before, so anyone who finds the bucket only gets scrambled bytes under opaque names. The bucket's address is only inside the encrypted game list.
+
+`private/.r2.json` (never committed; lines starting with `//` are comments):
+```json
+{
+  "endpoint": "https://<account-id>.r2.cloudflarestorage.com",
+  "bucket": "<bucket>",
+  "accessKeyId": "…",
+  "secretAccessKey": "…",
+  "publicUrl": "https://pub-<id>.r2.dev"
+}
+```
+- The bucket needs its Public Development URL enabled and a CORS policy allowing GET and HEAD from the site (`https://trantechsolutions.github.io`) and from the local preview, dev and test addresses.
+- The API token needs Object Read & Write on that bucket only.
+- `npm run build` uploads new or changed clips, skips ones already in the bucket (same MD5), and removes clips that are no longer published.
+- Without `private/.r2.json`, the build falls back to publishing clips in `public/`.
+
 ## Changing the team password
 
 Write the new password to `private/.site-password`, then run `npm run build`, commit and push. Everyone is signed out.
 
 ## Limits
 
-GitHub Pages allows 1 GB per site, which is about 9 games at around 100 MB of highlights each. Git rejects single files over 100 MB, and `make_highlights.py` refuses clips over 95 MB.
+GitHub Pages allows 1 GB per site; with clips on R2 the site itself is only a few MB. R2's free plan holds 10 GB of clips, roughly 100 games at about 90 MB each. Git rejects single files over 100 MB, and `make_highlights.py` refuses clips over 95 MB.
 
 ## Preview locally
 

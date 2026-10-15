@@ -16,6 +16,7 @@ import { createHmac, pbkdf2Sync } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadR2, r2Client } from "./lib/r2.mjs";
 import { keysFrom, opaque, seal } from "./lib/seal.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -55,6 +56,15 @@ const site = JSON.parse(readFileSync(join(DATA, "site.json"), "utf8"));
 const games = readdirSync(join(DATA, "games")).filter(f => f.endsWith(".json")).sort()
   .map(f => JSON.parse(readFileSync(join(DATA, "games", f), "utf8")));
 
+// Clips go to Cloudflare R2 when private/.r2.json exists; otherwise they're published in public/.
+let r2Config;
+try { r2Config = loadR2(join(ROOT, "private", ".r2.json")); } catch (e) { fail(e.message); }
+const r2 = r2Config ? r2Client(r2Config) : null;
+let inBucket = new Map();
+if (r2) {
+  try { inBucket = await r2.list(); } catch (e) { fail(`Couldn't reach the R2 bucket (${e.name}). Check the keys in private/.r2.json.`); }
+}
+
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
 cpSync(APP, OUT, { recursive: true });
@@ -68,14 +78,27 @@ const put = (path, buf) => {
   return { name, bytes: sealed.length };
 };
 
+const uploadedNames = new Set();
+let uploaded = 0;
+
 const manifest = { us: site.us, team: site.team, games: [], clips: {} };
 let clipBytes = 0, clipCount = 0;
 for (const g of games) {
   for (const c of g.highlights.clips) {
     const src = join(CLIPS, g.slug, `${c.id}.mp4`);
     // Same path the first site used, so unchanged clips keep their name and bytes (no re-upload).
-    const { name, bytes } = put(`games/${g.slug}/clips/${c.id}.mp4`, readFileSync(src));
-    manifest.clips[`${g.slug}/${c.id}`] = { file: name, bytes };
+    const clipPath = `games/${g.slug}/clips/${c.id}.mp4`;
+    let file, bytes;
+    if (r2) {
+      const name = opaque(keys.nameKey, clipPath);
+      const sealed = seal(keys, clipPath, readFileSync(src));
+      if (await r2.put(name, sealed, inBucket)) uploaded++;
+      uploadedNames.add(name);
+      file = r2.url(name); bytes = sealed.length;
+    } else {
+      ({ name: file, bytes } = put(clipPath, readFileSync(src)));
+    }
+    manifest.clips[`${g.slug}/${c.id}`] = { file, bytes };
     clipBytes += bytes; clipCount++;
   }
   // The full-game video path stays on this PC; the coaches' breakdown goes in its own coach-key file.
@@ -90,6 +113,10 @@ for (const g of games) {
 // Game-list order: newest first; the app keeps this order for same-day games.
 manifest.games.sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time));
 put("manifest.json", Buffer.from(JSON.stringify(manifest), "utf8"));
+if (r2) {
+  const removed = await r2.prune(uploadedNames, inBucket);
+  console.log(`R2: ${uploaded} clip(s) uploaded, ${uploadedNames.size - uploaded} already there, ${removed} old one(s) removed`);
+}
 
 // Nothing readable about the team, games or players may appear in the public app files.
 const needles = new Set([site.us, ...games.flatMap(g => [g.opponent, g.slug, ...g.highlights.clips.map(c => c.id)])]);
