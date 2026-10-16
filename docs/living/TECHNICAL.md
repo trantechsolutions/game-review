@@ -2,6 +2,13 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-15 — 27 September game (295e60b..3ccee42)
+
+- New private game file (slug `2026-09-27-gcufc`), 6 clips; 295e60b adds it, 3ccee42 applies coach corrections (ST 8', CB 20' penalty, cards CM 40' / RM 47' / CM 56'), renaming clip `04-goal-20-free-kick` to `04-cb-20-penalty`.
+- `public/`: one modified and two new `.bin` (manifest, game data, coaches' breakdown). R2: 6 clips uploaded; the rename re-uploaded 1 and pruned 1.
+- Validation passes for all 7 games, build encrypts 7 games / 43 clips, e2e passes (coach lock, clip decrypted, EN/ES pages); leak check clean.
+- Rollback: revert 3ccee42 and 295e60b, remove the private game file, run `npm run build` (prunes the game's clips from R2).
+
 ## 2026-10-15 — Second 26 September game (786eec1..786eec1)
 
 - New private game file (slug `2026-09-26-hfc`), 30 events, 7 clips; scorer positions and the booked CM set from coach confirmation, clip ids renamed to match (`02-st-15`, `03-lm-29-counter`).

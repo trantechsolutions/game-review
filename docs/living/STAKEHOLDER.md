@@ -2,6 +2,11 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-15 — 27 September game (295e60b..3ccee42)
+
+- The 2–4 away loss from 27 September is now on the site, in English and Spanish, with all five pages and a highlight clip for each of the six goals.
+- Our goals came from the striker (8') and a centre-back penalty (20'). The three yellow cards are shown by position, as confirmed by the coaching staff.
+
 ## 2026-10-15 — Second 26 September game (786eec1..786eec1)
 
 - The 4–3 away win from 26 September (the second game that day) is now on the site, in English and Spanish, with all five pages and a highlight clip for each of the seven goals.

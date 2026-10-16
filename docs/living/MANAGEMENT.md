@@ -2,6 +2,14 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-15 — 27 September game (295e60b..3ccee42)
+
+**Delivered.** One new game: full play-by-play, match report, coaches' breakdown, unit reviews and 6 highlight clips (about 44 MB, stored in R2). The site now holds 7 games; R2 use is about 526 MB of 10 GB.
+
+**Decisions.** Built from the video and the Ollie final-score screen, with no events log. All goal minutes match Ollie. The first pass read the 20' goal as a free kick; the coach corrected it to a centre-back penalty, the tape agrees, and it was fixed before publishing. The cards (CM 40', RM 47', CM 56') are not visible on the wide camera and are logged at Ollie's minutes with coach-confirmed positions. Formation (4-4-2) confirmed by the coach.
+
+**Open.** Only the goals could be placed as shots; the remaining shots in Ollie's totals are not logged. The opponent's scorers and the fouls behind their two free-kick goals can't be read from the wide camera.
+
 ## 2026-10-15 — Second 26 September game (786eec1..786eec1)
 
 **Delivered.** One new game: full play-by-play, match report, coaches' breakdown, unit reviews and 7 highlight clips (about 37 MB, stored in R2). The site now holds 6 games; R2 use is about 482 MB of 10 GB.
