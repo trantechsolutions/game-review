@@ -2,6 +2,13 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-17 — 29 August game (e64014b..9030af4)
+
+- New private game file (slug `2026-08-29-covington`), 12 events, 6 clips; e64014b adds it, 9030af4 replaces the unconfirmed-scorer and 61'-vs-60'+2' flags with coach confirmations (video-time column for the last goal stays 61').
+- `public/`: one modified and two new `.bin` (manifest, game data, coaches' breakdown). R2: 6 clips uploaded; nothing re-uploaded on the revise.
+- Validation passes for all 8 games, build passes (49 clips in R2), e2e passes (coach lock, clip decrypted, EN/ES pages); leak check clean.
+- Rollback: revert 9030af4 and e64014b, remove the private game file, run `npm run build` (prunes the game's clips from R2).
+
 ## 2026-10-15 — 27 September game (295e60b..3ccee42)
 
 - New private game file (slug `2026-09-27-gcufc`), 6 clips; 295e60b adds it, 3ccee42 applies coach corrections (ST 8', CB 20' penalty, cards CM 40' / RM 47' / CM 56'), renaming clip `04-goal-20-free-kick` to `04-cb-20-penalty`.

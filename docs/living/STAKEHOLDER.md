@@ -2,6 +2,11 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-17 — 29 August game (e64014b..9030af4)
+
+- The 1–3 away scrimmage loss from 29 August is now on the site, in English and Spanish, with all five pages and six highlight clips (every goal plus two spells of play).
+- Our goal came from the striker; the coaching staff confirmed the scorer and the timing of the late goal.
+
 ## 2026-10-15 — 27 September game (295e60b..3ccee42)
 
 - The 2–4 away loss from 27 September is now on the site, in English and Spanish, with all five pages and a highlight clip for each of the six goals.

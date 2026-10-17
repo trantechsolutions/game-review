@@ -2,6 +2,14 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-17 — 29 August game (e64014b..9030af4)
+
+**Delivered.** One new game: full play-by-play, match report, coaches' breakdown, unit reviews and 6 highlight clips (about 54 MB, stored in R2). The site now holds 8 games; R2 use is about 580 MB of 10 GB.
+
+**Decisions.** Built from the video and the Ollie final-score screen, with no events log. All four goals were open play. The coach confirmed the scorer (ST), that the 37' and 54' goals came down DFC's right side, and Ollie's 60'+2' for the last goal (the video places it about a minute earlier). Ollie's clock ran through the drinks breaks, so half lengths include them.
+
+**Open.** Only the goals could be placed as shots; 17 of DFC's 18 shots and 1 of Covington's 4 are not logged. Opponent scorers are not identified.
+
 ## 2026-10-15 — 27 September game (295e60b..3ccee42)
 
 **Delivered.** One new game: full play-by-play, match report, coaches' breakdown, unit reviews and 6 highlight clips (about 44 MB, stored in R2). The site now holds 7 games; R2 use is about 526 MB of 10 GB.
