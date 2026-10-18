@@ -2,6 +2,11 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-18 — 17 October game (3799946..a486f74)
+
+- The 0–9 away loss from 17 October, against an older Pre-ECNL side, is now on the site in English and Spanish, with all five pages and six highlight clips (the five first-half goals and DFC's best attack).
+- Sun glare hides the second-half goals on the video, so those four are described from the stats timeline only and have no clips.
+
 ## 2026-10-17 — 29 August game (e64014b..9030af4)
 
 - The 1–3 away scrimmage loss from 29 August is now on the site, in English and Spanish, with all five pages and six highlight clips (every goal plus two spells of play).

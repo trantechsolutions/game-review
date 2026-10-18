@@ -2,6 +2,13 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-18 — 17 October game (3799946..a486f74)
+
+- New private game file (slug `2026-10-17-la-fire`), 16 events, 6 clips, sourced from a Hudl HLS broadcast (1080p, ffmpeg). 3799946 adds it; a486f74 corrects team identification (DFC light blue) using kick-off line-ups and rewrites the affected event, report and unit-review text (EN/ES). No clips re-cut.
+- `public/`: one modified and two new `.bin` (manifest, game data, coaches' breakdown). R2: 6 clips uploaded.
+- Validation passes for all 9 games, build passes, e2e passes (coach lock, clip decrypted, EN/ES pages); leak check clean.
+- Rollback: revert a486f74 and 3799946, remove the private game file, run `npm run build` (prunes the game's clips from R2).
+
 ## 2026-10-17 — 29 August game (e64014b..9030af4)
 
 - New private game file (slug `2026-08-29-covington`), 12 events, 6 clips; e64014b adds it, 9030af4 replaces the unconfirmed-scorer and 61'-vs-60'+2' flags with coach confirmations (video-time column for the last goal stays 61').

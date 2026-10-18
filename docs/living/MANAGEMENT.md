@@ -2,6 +2,14 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-18 — 17 October game (3799946..a486f74)
+
+**Delivered.** One new game: full play-by-play, match report, coaches' breakdown, unit reviews and 6 highlight clips (about 70 MB, stored in R2). The site now holds 9 games; R2 use is about 650 MB of 10 GB.
+
+**Decisions.** Built from the opponent's public Hudl broadcast (the Reeplayer recording stopped after about 23 minutes) and the Ollie final-score screen, with no events log. The first pass had the kits reversed; after the coach's correction (DFC light blue, LA Fire white with red) teams were re-identified from the kick-off line-ups and the affected descriptions fixed before publishing. Second-half goals are not clipped because sun glare hides DFC's goal.
+
+**Open.** Second-half goal minutes rely on Ollie (±1 min on video). DFC's two shots could not be confirmed on the tape. Competition type and the cause of a two-minute second-half stoppage are unconfirmed.
+
 ## 2026-10-17 — 29 August game (e64014b..9030af4)
 
 **Delivered.** One new game: full play-by-play, match report, coaches' breakdown, unit reviews and 6 highlight clips (about 54 MB, stored in R2). The site now holds 8 games; R2 use is about 580 MB of 10 GB.
