@@ -2,6 +2,14 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-19 — 18 October game (e65afa1..e65afa1)
+
+**Delivered.** One new game: full play-by-play, match report, coaches' breakdown, unit reviews and 8 highlight clips (about 103 MB, stored in R2). The site now holds 10 games; R2 use is about 750 MB of 10 GB.
+
+**Decisions.** Built from the video and the Ollie final-score screen, with no events log. Teams identified from the kick-off line-ups. At the coach's request, goal kicks and GK possessions were logged: of 9 visible, BRSC won 6 back, 5 were lost in DFC's defensive third, and 2 led to goals within 30 seconds (11', 53'). This opponent is a different BRSC team from 11 October and is stored as a separate game.
+
+**Open.** Kits (seen as DFC light blue, BRSC red) are unconfirmed. Ollie's 23' sits a minute later than the video. The restart types before the 11' and 53' goals, the scheduled kick-off and the competition name are unconfirmed. BRSC's three off-target shots are not placed.
+
 ## 2026-10-18 — 17 October game (3799946..a486f74)
 
 **Delivered.** One new game: full play-by-play, match report, coaches' breakdown, unit reviews and 6 highlight clips (about 70 MB, stored in R2). The site now holds 9 games; R2 use is about 650 MB of 10 GB.

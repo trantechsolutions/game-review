@@ -2,6 +2,11 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-19 — 18 October game (e65afa1..e65afa1)
+
+- The 0–5 away loss from 18 October is now on the site, in English and Spanish, with all five pages and eight highlight clips (all five goals plus three examples of playing out from the back).
+- The breakdown looks closely at goal kicks and the goalkeeper's restarts, which the coaches are focusing on.
+
 ## 2026-10-18 — 17 October game (3799946..a486f74)
 
 - The 0–9 away loss from 17 October, against an older Pre-ECNL side, is now on the site in English and Spanish, with all five pages and six highlight clips (the five first-half goals and DFC's best attack).

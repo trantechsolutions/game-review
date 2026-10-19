@@ -2,6 +2,13 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-19 — 18 October game (e65afa1..e65afa1)
+
+- New private game file (slug `2026-10-18-brsc-black`, distinct from `2026-10-11-brsc`), 32 events, 8 clips, plus a goal-kick/GK-possession table in the match report.
+- `public/`: one modified and two new `.bin` (manifest, game data, coaches' breakdown). R2: 8 clips uploaded.
+- Validation passes for all 10 games, build passes (63 clips), e2e passes (coach lock, clip decrypted, EN/ES pages). Leak check: only the pre-existing `tools/legacy/acronyms.mjs` regex mentions the club acronym (untouched).
+- Rollback: revert e65afa1, remove the private game file, run `npm run build` (prunes the game's clips from R2).
+
 ## 2026-10-18 — 17 October game (3799946..a486f74)
 
 - New private game file (slug `2026-10-17-la-fire`), 16 events, 6 clips, sourced from a Hudl HLS broadcast (1080p, ffmpeg). 3799946 adds it; a486f74 corrects team identification (DFC light blue) using kick-off line-ups and rewrites the affected event, report and unit-review text (EN/ES). No clips re-cut.
