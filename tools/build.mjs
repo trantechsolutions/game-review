@@ -6,6 +6,7 @@
 //   private/data/roster.json          optional squad list with positions (coach-password key)
 //   private/data/lineups.json         optional starters and changes per game (coach-password key)
 //   private/.keeper-password          optional: seals the scorekeeper's squad list (scorekeeper-password key)
+//   private/data/ollie/history.json   optional Ollie Sports game history (tools/ollie/pull.ts); players.json coach key
 //   private/clips/<slug>/<id>.mp4     highlight clips (tools/make_highlights.py)
 //   dist/app/                         the React app shell from `vite build`; holds no game content
 //
@@ -128,6 +129,20 @@ if (existsSync(LINEUPS)) {
   manifest.lineupsFile = opaque(keys.nameKey, lineupsPath);
   writeFileSync(join(OUT, manifest.lineupsFile), seal(coachKeys, lineupsPath, Buffer.from(readFileSync(LINEUPS))));
 }
+// Ollie Sports game history (tools/ollie/pull.ts): team stats with the team key; player stats name players,
+// so like the roster they open only with the coach password.
+const OLLIE = join(DATA, "ollie");
+if (existsSync(join(OLLIE, "history.json"))) {
+  const historyPath = "ollie/history.json";
+  manifest.ollieFile = opaque(keys.nameKey, historyPath);
+  writeFileSync(join(OUT, manifest.ollieFile), seal(keys, historyPath, readFileSync(join(OLLIE, "history.json"))));
+  if (existsSync(join(OLLIE, "players.json"))) {
+    const playersPath = "coaches/ollie-players.json";
+    manifest.olliePlayersFile = opaque(keys.nameKey, playersPath);
+    writeFileSync(join(OUT, manifest.olliePlayersFile), seal(coachKeys, playersPath, readFileSync(join(OLLIE, "players.json"))));
+  }
+}
+
 // The scorekeeper's squad list opens with the scorekeeper password only. Same derivation as
 // app/src/lib/keeperCrypto.ts; its file name comes from that key, so scorekeeper mode needs neither the
 // team password nor the manifest to find it.

@@ -1,7 +1,7 @@
 // Unlocks the site with the team password and loads the encrypted manifest, games and clips.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { aesKey, b64, keyStore, open, opaqueName, pbkdf2, readKdf, type Bytes } from "./lib/crypto";
-import { CoachContent, Lineups, Manifest, PublicGame, Roster, type Game } from "./schema";
+import { CoachContent, Lineups, Manifest, OllieHistory, OlliePlayers, PublicGame, Roster, type Game } from "./schema";
 
 interface Site {
   manifest: Manifest;
@@ -12,6 +12,10 @@ interface Site {
   loadRoster: (contentKey: Bytes) => Promise<Roster | null>;
   /** Starters and changes per game, opened with the coach-password key; null when none is published. */
   loadLineups: (contentKey: Bytes) => Promise<Lineups | null>;
+  /** Ollie Sports game history (team stats); null when none is published. */
+  loadOllie: () => Promise<OllieHistory | null>;
+  /** Its player stats, opened with the coach-password key; null when none is published. */
+  loadOlliePlayers: (contentKey: Bytes) => Promise<OlliePlayers | null>;
   loadClip: (slug: string, id: string, onStage?: (s: "fetch" | "decrypt") => void) => Promise<string>;
   lock: () => void;
 }
@@ -88,6 +92,8 @@ export function SiteContext({ keyObj, manifest, children }: { keyObj: CryptoKey;
   const clips = useRef(new Map<string, string>());
   const roster = useRef<Promise<Roster | null> | null>(null);
   const lineups = useRef<Promise<Lineups | null> | null>(null);
+  const ollie = useRef<Promise<OllieHistory | null> | null>(null);
+  const olliePlayers = useRef<Promise<OlliePlayers | null> | null>(null);
 
   const value = useMemo<Site>(() => ({
     manifest,
@@ -130,6 +136,24 @@ export function SiteContext({ keyObj, manifest, children }: { keyObj: CryptoKey;
         lineups.current = p;
       }
       return lineups.current;
+    },
+    loadOllie: () => {
+      if (!manifest.ollieFile) return Promise.resolve(null);
+      if (!ollie.current) {
+        const p = fetchSealed(keyObj, manifest.ollieFile).then(u => OllieHistory.parse(json(u)));
+        p.catch(() => { ollie.current = null; });
+        ollie.current = p;
+      }
+      return ollie.current;
+    },
+    loadOlliePlayers: contentKey => {
+      if (!manifest.olliePlayersFile) return Promise.resolve(null);
+      if (!olliePlayers.current) {
+        const p = aesKey(contentKey).then(k => fetchSealed(k, manifest.olliePlayersFile!)).then(u => OlliePlayers.parse(json(u)));
+        p.catch(() => { olliePlayers.current = null; });
+        olliePlayers.current = p;
+      }
+      return olliePlayers.current;
     },
     loadClip: async (slug, id, onStage) => {
       const k = `${slug}/${id}`;

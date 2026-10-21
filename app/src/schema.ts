@@ -268,6 +268,31 @@ export const KeepEntry = z.discriminatedUnion("k", [
 ]);
 export type KeepEntry = z.infer<typeof KeepEntry>;
 
+// Ollie Sports history (tools/ollie/pull.ts → private/data/ollie/), sealed with the team key; player stats name
+// players, so they are sealed with the coach-password key. Stat keys are Ollie's own (keeplog-free).
+const StatMap = z.record(z.string(), z.number());
+const SidePair = z.object({ own: StatMap, opp: StatMap }).strict();
+export const OllieGame = z.object({
+  id: z.string(),
+  team: z.string(),                    // the Ollie team it was recorded for
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  time: z.string(),
+  opponent: z.string(),
+  home: z.boolean().nullable(),
+  us: z.number(), them: z.number(),
+  statMode: z.string().nullable(),     // Ollie's "beginner" (team only) or "advanced" (players too)
+  inApp: z.string().nullable(),        // the library game it is, when the library has it
+  stats: SidePair.nullable(),          // the whole game
+  halves: z.object({ first: SidePair.nullable(), second: SidePair.nullable() }).strict(),
+}).strict();
+export type OllieGame = z.infer<typeof OllieGame>;
+export const OllieHistory = z.object({ pulledAt: z.string(), games: z.array(OllieGame) }).strict();
+export type OllieHistory = z.infer<typeof OllieHistory>;
+export const OlliePlayers = z.object({
+  games: z.record(z.string(), z.array(z.object({ name: z.string(), number: z.string().nullable(), stats: StatMap }).strict())),
+}).strict();
+export type OlliePlayers = z.infer<typeof OlliePlayers>;
+
 // The decrypted manifest: the game list plus where each encrypted file lives.
 export const Manifest = z.object({
   us: z.string(),                   // our short team name; kept out of the public app code
@@ -280,5 +305,7 @@ export const Manifest = z.object({
   clips: z.record(z.string(), z.object({ file: z.string(), bytes: z.number() }).strict()), // "<slug>/<clip id>"
   rosterFile: z.string().optional(), // the roster, sealed with the coach-password key
   lineupsFile: z.string().optional(), // the lineups, sealed with the coach-password key
+  ollieFile: z.string().optional(),   // Ollie Sports game history (team stats)
+  olliePlayersFile: z.string().optional(), // its player stats, sealed with the coach-password key
 }).strict();
 export type Manifest = z.infer<typeof Manifest>;

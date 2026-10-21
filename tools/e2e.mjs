@@ -39,6 +39,9 @@ try {
   expect404 = false;
   await page.fill("#pw", password);
   await page.click("button[type=submit]");
+  // Unlocking lands on the season overview; the games are in the library tab.
+  await page.locator(".pg-season").waitFor({ timeout: 30000 });
+  await page.locator(".appbar nav a", { hasText: "Game film library" }).click();
   await page.locator(".pg-list .game").first().waitFor({ timeout: 30000 });
   await page.screenshot({ path: join(SHOTS, "list-en.png"), fullPage: true });
   const slugs = await page.locator(".pg-list .links a.pbp").evaluateAll(as => as.map(a => a.getAttribute("href").split("/")[2]));
@@ -52,7 +55,7 @@ try {
   await page.goto(`${base}#/game/${slugs[0]}/coaches`);
   await page.locator(".locked").waitFor({ timeout: 20000 });
   if (await page.locator(".pg-coaches").count()) problems.push("coaches' breakdown rendered without the coach password");
-  if (await page.locator(".appbar nav a", { hasText: /Coaches' breakdown/ }).count()) problems.push("menu shows the coaches' breakdown while locked");
+  if (await page.locator(".gtabs a", { hasText: /Coaches. breakdown/ }).count()) problems.push("menu shows the coaches' breakdown while locked");
 
   // The coach area refuses a wrong coach password, then opens with the right one.
   expect400 = true;
@@ -65,7 +68,7 @@ try {
   await page.fill("#coach-pw", coachPassword);
   await page.locator(".dialog button[type=submit]").click();
   await page.locator(".pg-coaches .zone").first().waitFor({ timeout: 30000 });
-  if (!(await page.locator(".appbar nav a", { hasText: /Coaches' breakdown/ }).count())) problems.push("menu hides the coaches' breakdown after unlocking");
+  if (!(await page.locator(".gtabs a", { hasText: /Coaches. breakdown/ }).count())) problems.push("menu hides the coaches' breakdown after unlocking");
   console.log("coaches' breakdown: locked with the team password, opens with the coach password");
 
   const checks = {
@@ -113,7 +116,10 @@ try {
       atBottom: Math.ceil(scrollY + innerHeight) >= document.documentElement.scrollHeight - 2,
     }), id);
     if (page.url() !== before) problems.push(`${p} quick link changed the page to ${page.url()}`);
-    if (Math.abs(top) > 40 && !(atBottom && top > 0)) problems.push(`${p} quick link didn't scroll to #${id} (top ${Math.round(top)})`);
+    // Sections land just under the game's tabs and the page's section links, which stay at the top.
+    const bars = await page.evaluate(() => (document.querySelector(".gtabs")?.getBoundingClientRect().height ?? 0) + (document.querySelector("nav.toc")?.getBoundingClientRect().height ?? 0));
+    if (Math.abs(top - bars) > 40 && !(atBottom && top > 0)) problems.push(`${p} quick link didn't scroll to #${id} (top ${Math.round(top)}, bars ${Math.round(bars)})`);
+    if (top < bars - 4) problems.push(`${p} quick link hid #${id} under the sticky bars (top ${Math.round(top)})`);
   }
 
   // With a roster, the breakdown lists it and position tooltips name who could have made the play.
@@ -199,6 +205,18 @@ try {
   await page.screenshot({ path: join(SHOTS, "mobile-season.png"), fullPage: true });
 
   await page.setViewportSize({ width: 1280, height: 900 });
+
+  // Ollie Sports history, when one is published: the tab lists games and a row opens its numbers.
+  await page.goto(`${base}#/`);
+  if (await page.locator(".appbar nav a", { hasText: /Game history|Historial/ }).count()) {
+    await page.locator(".appbar nav a", { hasText: /Game history|Historial/ }).click();
+    await page.locator(".hist-tools").waitFor({ timeout: 30000 });
+    await page.locator(".hist-tools .check input").check();
+    const rows = await page.locator(".hist-row").count();
+    if (!rows) problems.push("game history: no games listed");
+    else { await page.locator(".hist-row").first().click(); await page.locator(".hist-detail").waitFor({ timeout: 10000 }); }
+    console.log(`game history: ${rows} games`);
+  }
 
   // Lock clears the key.
   await page.getByRole("button", { name: /Bloquear|Lock/ }).click();

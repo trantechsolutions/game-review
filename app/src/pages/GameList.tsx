@@ -46,17 +46,26 @@ export function GameList() {
             const base = `/game/${g.slug}`;
             return (
               <li key={g.slug} className="game">
-                <p className="date"><b>{f.day}</b>{f.year}{g.time ? ` · ${g.time}` : ""}</p>
+                <div className="when">
+                  <p className="date"><b>{f.day}</b>{f.year}{g.time ? ` · ${g.time}` : ""}</p>
+                  <div className="quick">
+                    <Link className="qbtn hl" to={`${base}/highlights`} aria-label={t("highlights")} title={t("highlights")}>
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" /></svg>
+                    </Link>
+                    <Link className="qbtn rep" to={`${base}/report`} aria-label={t("matchReport")} title={t("matchReport")}>
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path className="sheet" d="M6 3h8.5L19 7.5V21H6z" /><path className="fold" d="M14 3v5h5" /><path className="lines" d="M9 12h7M9 15h7M9 18h4.5" /></svg>
+                    </Link>
+                  </div>
+                </div>
                 <div className="match">
                   <h2 className="opp"><span className="vs">{t("vs")}</span>{g.opponent}</h2>
                   <p className="ctx"><span className="res"><i className={o}>{lang === "es" ? LETTER_ES[o] : o}</i>{g.us}–{g.them}</span> · <T t={g.context} /></p>
                 </div>
-                <div className="links">
+                {/* The deeper reads get their own row under the game. */}
+                <div className="links more">
                   <Link className="pbp" to={`${base}/play-by-play`}>{t("playByPlay")}</Link>
                   {coach ? <Link className="coach" to={`${base}/coaches`}>{t("coachesBreakdown")}</Link> : null}
                   <Link className="units" to={`${base}/units`}>{t("unitReview")}</Link>
-                  <Link className="hl" to={`${base}/highlights`}>{t("highlights")}</Link>
-                  <Link className="rep" to={`${base}/report`}>{t("matchReport")}</Link>
                 </div>
               </li>
             );

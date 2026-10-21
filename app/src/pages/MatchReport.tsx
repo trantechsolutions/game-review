@@ -5,34 +5,20 @@ import { mmss, sec, videoSec, workingClip } from "../lib/time";
 import type { PublicGame as Game, GameEvent } from "../schema";
 import { useSite } from "../site";
 import { NamerContext, useNamed, useNamer } from "../squad";
-import { eventLabel, SecHead, Toc, useDateLine } from "./shared";
+import { eventLabel, PageLead, SecHead, Toc } from "./shared";
 
 export function MatchReport({ game: g }: { game: Game }) {
   const US = useSite().manifest.us;
   const { t, tx } = useI18n();
   const count = useNoteCounts(g.slug);
   const R = g.report;
-  const dateLine = useDateLine(g);
   const byId = new Map(g.events.map(e => [e.id, e]));
   const namer = useNamer(g);
 
   return (
     <NamerContext.Provider value={namer}>
     <div className="pg-report">
-      <header className="board">
-        <div className="wrap">
-          <div className="board-top">
-            <span className="eyebrow"><T t={R.eyebrow} /></span>
-            <span className="eyebrow">{dateLine}</span>
-          </div>
-          <div className="score" aria-label={`${US} ${g.score.us}, ${g.opponent} ${g.score.them}`}>
-            <div className="team home"><span className="team-name">{US}</span><span className="team-scorers"><T t={R.scorers.us} /></span></div>
-            <div className="digits"><span className="digit home">{g.score.us}</span><span className="dash">–</span><span className="digit away">{g.score.them}</span></div>
-            <div className="team away"><span className="team-name">{g.opponent}</span><span className="team-scorers"><T t={R.scorers.them} /></span></div>
-          </div>
-          <div className="board-foot">{R.board.map((b, i) => <span key={i}><T t={b} /></span>)}</div>
-        </div>
-      </header>
+      <PageLead eyebrow={<T t={R.eyebrow} />} facts={R.board.map((b, i) => <T key={i} t={b} />)} />
 
       <main className="wrap">
         <Toc items={[["story", t("story")], ["first-half", t("half1")], ["second-half", t("half2")], ["numbers", t("numbers")], ["takeaways", t("takeaways")], ["clips", t("clips")]]} />

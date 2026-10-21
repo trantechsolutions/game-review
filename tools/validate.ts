@@ -4,7 +4,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { halfLengths, lineupFor, playLineup, type HalfLengths } from "../app/src/lib/lineup";
-import { Game, Lineups, Roster, Text } from "../app/src/schema";
+import { Game, Lineups, OllieHistory, OlliePlayers, Roster, Text } from "../app/src/schema";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DATA = process.env.DFC_DATA || join(ROOT, "private", "data");
@@ -137,6 +137,17 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     const errs = checkLineups(JSON.parse(readFileSync(lineupsFile, "utf8")), names, lens);
     if (errs.length) { bad++; console.error(`✗ lineups.json\n  ${errs.join("\n  ")}`); }
     else console.log("✓ lineups.json");
+  }
+  // Ollie Sports history: schema, and each game it says the library has must exist.
+  const ollieDir = join(DATA, "ollie");
+  if (existsSync(join(ollieDir, "history.json"))) {
+    const h = OllieHistory.safeParse(JSON.parse(readFileSync(join(ollieDir, "history.json"), "utf8")));
+    const errs = h.success ? h.data.games.filter(g => g.inApp && !files.includes(`${g.inApp}.json`)).map(g => `${g.id}: matched to missing game ${g.inApp}`)
+      : h.error.issues.slice(0, 20).map(i => `${i.path.join(".")}: ${i.message}`);
+    const pf = join(ollieDir, "players.json");
+    if (existsSync(pf)) { const pl = OlliePlayers.safeParse(JSON.parse(readFileSync(pf, "utf8"))); if (!pl.success) errs.push(...pl.error.issues.slice(0, 10).map(i => `players.${i.path.join(".")}: ${i.message}`)); }
+    if (errs.length) { bad++; console.error(`✗ ollie/history.json\n  ${errs.join("\n  ")}`); }
+    else console.log(`✓ ollie/history.json (${h.success ? h.data.games.length : 0} games)`);
   }
   process.exit(bad ? 1 : 0);
 }

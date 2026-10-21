@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createHashRouter, Link, NavLink, Navigate, Outlet, RouterProvider, useLocation, useParams } from "react-router-dom";
+import { GameHeader } from "./components/GameHeader";
 import { CoachLogin, NotesDrawer } from "./components/Notes";
-import { useI18n } from "./i18n";
+import { useI18n, type Key } from "./i18n";
 import { NotesProvider, useNotes } from "./notes";
 import { Coaches } from "./pages/Coaches";
 import { GameList } from "./pages/GameList";
 import { Highlights } from "./pages/Highlights";
+import { History } from "./pages/History";
 import { KeepApp } from "./pages/Keep";
 import { MatchReport } from "./pages/MatchReport";
 import { PlayByPlay } from "./pages/PlayByPlay";
@@ -16,12 +18,13 @@ import { useCoaches } from "./pages/Coaches";
 import type { PublicGame } from "./schema";
 import { BadPassword, MissingData, SiteContext, useSite, useUnlock } from "./site";
 
+// A game's pages, in tab order: the summary first, the deepest reads last. A game opens on the first.
 const PAGES = {
-  "play-by-play": { key: "playByPlay", C: PlayByPlay },
-  coaches: { key: "coachesBreakdown", C: Coaches },
-  units: { key: "unitReview", C: UnitReview },
-  highlights: { key: "highlights", C: Highlights },
   report: { key: "matchReport", C: MatchReport },
+  highlights: { key: "highlights", C: Highlights },
+  "play-by-play": { key: "playByPlay", C: PlayByPlay },
+  units: { key: "unitReview", C: UnitReview },
+  coaches: { key: "coachesBreakdown", C: Coaches },
 } as const;
 type PageId = keyof typeof PAGES;
 
@@ -39,20 +42,19 @@ function AppBar() {
   const notes = useNotes();
   const { slug, page } = useParams();
   const nav = useRef<HTMLElement>(null);
-  // On narrow screens the page links scroll sideways; keep the current one in view.
+  // On narrow screens the links scroll sideways; keep the current one in view.
   useEffect(() => {
     nav.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ inline: "center", block: "nearest" });
   }, [slug, page]);
+  // The site's own pages only; a game's pages are tabs under its header. Inside a game, the library is "here".
   return (
     <div className="appbar">
       <nav ref={nav} aria-label={t("allGames")}>
-        <Link className="home" to="/">{manifest.us} <span>film</span></Link>
-        {slug ? (Object.keys(PAGES) as PageId[]).filter(p => p !== "coaches" || notes.signedIn).map(p => (
-          <NavLink key={p} to={`/game/${slug}/${p}`}>{t(PAGES[p].key)}</NavLink>
-        )) : <>
-          <NavLink to="/season">{t("seasonOverview")}</NavLink>
-          {notes.signedIn ? <NavLink to="/players">{t("players")}</NavLink> : null}
-        </>}
+        <Link className="home" to="/season">{manifest.us} <span>film</span></Link>
+        <NavLink to="/season">{t("seasonOverview")}</NavLink>
+        <NavLink to="/library" aria-current={slug ? "page" : undefined} className={({ isActive }) => (isActive || slug ? "active" : "")}>{t("library")}</NavLink>
+        {manifest.ollieFile ? <NavLink to="/history">{t("ollieHistory")}</NavLink> : null}
+        {notes.signedIn ? <NavLink to="/players">{t("players")}</NavLink> : null}
       </nav>
       <div className="tools">
         <LangToggle />
@@ -97,8 +99,8 @@ function GamePage() {
     if (entry) document.title = `${manifest.us} ${entry.us}–${entry.them} ${entry.opponent} · ${t(PAGES[page as PageId]?.key ?? "appTitle")}`;
   }, [entry, page, t]);
 
-  if (!entry) return <Status><p>{t("notFound")}</p><Link className="btn-line" to="/">{t("allGames")}</Link></Status>;
-  if (!(page in PAGES)) return <Navigate to={`/game/${slug}/play-by-play`} replace />;
+  if (!entry) return <Status><p>{t("notFound")}</p><Link className="btn-line" to="/library">{t("allGames")}</Link></Status>;
+  if (!(page in PAGES)) return <Navigate to={`/game/${slug}/report`} replace />;
   if (state.error) return <Status><p>{t("loadFailed")}</p><button className="btn-line" onClick={() => setAttempt(a => a + 1)}>{t("retry")}</button></Status>;
   if (!state.game || state.slug !== slug) return <Status><p>{t("loading")}</p></Status>;
 
@@ -133,8 +135,10 @@ function GamePage() {
     return map[`${pg}/${id}`] ?? anchor;
   };
 
+  const tabs = (Object.keys(PAGES) as PageId[]).filter(p => p !== "coaches" || notes.signedIn).map(p => [p, PAGES[p].key] as [string, Key]);
   return (
     <>
+      <GameHeader g={g} page={page} tabs={tabs} />
       <C game={g} />
       {notes.signedIn ? (
         <button type="button" className="notes-fab" onClick={() => notes.openDrawer(g.slug, "*", t("notes"))}>{t("notes")}</button>
@@ -147,14 +151,17 @@ function GamePage() {
 const router = createHashRouter([{
   element: <Shell />,
   children: [
-    { path: "/", element: <GameList /> },
+    // Season overview is the home page; the game list is the library.
+    { path: "/", element: <Navigate to="/season" replace /> },
+    { path: "/library", element: <GameList /> },
     { path: "/season", element: <Season /> },
+    { path: "/history", element: <History /> },
     { path: "/players", element: <Players /> },
     { path: "/player/:id", element: <Player /> },
     { path: "/keep/*", element: null }, // App swaps to scorekeeper mode on this hash
     { path: "/game/:slug", element: <GamePage /> },
     { path: "/game/:slug/:page", element: <GamePage /> },
-    { path: "*", element: <Navigate to="/" replace /> },
+    { path: "*", element: <Navigate to="/season" replace /> },
   ],
 }]);
 

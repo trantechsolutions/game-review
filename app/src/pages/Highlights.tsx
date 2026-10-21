@@ -5,21 +5,14 @@ import { useI18n, type Key } from "../i18n";
 import { mmss, sec } from "../lib/time";
 import type { PublicGame as Game } from "../schema";
 import { useSite } from "../site";
-import { useDateLine } from "./shared";
+import { PageLead } from "./shared";
 
 export function Highlights({ game: g }: { game: Game }) {
   const { t } = useI18n();
-  const { manifest } = useSite();
-  const dateLine = useDateLine(g);
   const count = useNoteCounts(g.slug);
   return (
     <div className="pg-hl">
-      <header className="strip">
-        <div className="wrap">
-          <span className="eyebrow">{t("highlights")} · {dateLine}</span>
-          <h1>{manifest.us} {g.score.us}–{g.score.them} {g.opponent}</h1>
-        </div>
-      </header>
+      <PageLead eyebrow={t("highlights")} lead={t("hlLead", { n: g.highlights.clips.length })} />
       <main className="wrap">
         <div className="grid">
           {g.highlights.clips.map(c => <Clip key={c.id} g={g} clip={c} count={count(`clip:${c.id}`)} />)}

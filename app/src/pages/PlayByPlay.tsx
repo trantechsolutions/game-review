@@ -6,7 +6,7 @@ import { gameMinute, mmss, videoSec, workingClip } from "../lib/time";
 import type { PublicGame as Game, GameEvent } from "../schema";
 import { useSite } from "../site";
 import { NamerContext, useNamed, useNamer } from "../squad";
-import { eventLabel, useDateLine } from "./shared";
+import { eventLabel, PageLead } from "./shared";
 
 type Kind = "all" | "goal" | "shot" | "to" | "win" | "build" | "set";
 const kinds = (e: GameEvent): string[] => {
@@ -45,22 +45,12 @@ export function PlayByPlay({ game: g }: { game: Game }) {
   const total = g.events.filter(e => e.t !== "N").length;
   const shown = g.events.filter(e => e.t !== "N" && visible(e)).length;
 
-  const dateLine = useDateLine(g);
   const namer = useNamer(g);
 
   return (
     <NamerContext.Provider value={namer}>
     <div className="pg-pbp">
-      <header className="strip">
-        <div className="wrap">
-          <span className="eyebrow">{t("playByPlay")} · {dateLine}</span>
-          <div className="strip-row">
-            <h1><span className="d">{US}</span> <span className="n">{g.score.us}–{g.score.them}</span> <span className="o">{g.opponent}</span></h1>
-            <div className="goals">{g.goals.map((x, i) => <span key={i} className={x.t}><T t={x.label} /></span>)}</div>
-          </div>
-          <span className="eyebrow"><T t={g.competition} /> · {t("ht")} {g.score.htUs}–{g.score.htThem}</span>
-        </div>
-      </header>
+      <PageLead eyebrow={t("playByPlay")} lead={<T t={g.competition} />} />
 
       <main className="wrap">
         <div className="filters" role="group" aria-label={t("filterEvents")}>

@@ -2,8 +2,7 @@ import { T } from "../components/RichText";
 import { NoteButton, useNoteCounts } from "../components/Notes";
 import { useI18n, type Key } from "../i18n";
 import type { PublicGame as Game } from "../schema";
-import { useSite } from "../site";
-import { Toc, useDateLine } from "./shared";
+import { PageLead, Toc } from "./shared";
 
 const UNIT: Record<Game["unitReviews"]["units"][number]["unit"], Key> = {
   defense: "unit_defense", midfield: "unit_midfield", attack: "unit_attack",
@@ -16,20 +15,12 @@ function Evs({ ev }: { ev: string[] }) {
 
 export function UnitReview({ game: g }: { game: Game }) {
   const { t } = useI18n();
-  const { manifest } = useSite();
-  const dateLine = useDateLine(g);
   const count = useNoteCounts(g.slug);
   const R = g.unitReviews;
 
   return (
     <div className="pg-units">
-      <header className="top">
-        <div className="wrap">
-          <span className="eyebrow">{t("unitReview")} · {dateLine}</span>
-          <h1>{manifest.us} {g.score.us}–{g.score.them} <span>{g.opponent}</span></h1>
-          <p><T t={R.intro} /></p>
-        </div>
-      </header>
+      <PageLead eyebrow={t("unitReview")} lead={<T t={R.intro} />} />
 
       <main className="wrap">
         <Toc items={R.units.map(u => [`unit-${u.unit}`, t(UNIT[u.unit])])} />

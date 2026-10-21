@@ -11,7 +11,7 @@ import { useNotes } from "../notes";
 import type { Game, Priority, PublicGame, Roster } from "../schema";
 import { useSite } from "../site";
 import { labelOf, playerId, useLineups, useRoster } from "../squad";
-import { SecHead, Toc } from "./shared";
+import { PageLead, SecHead, Toc } from "./shared";
 
 const clock = (s: number) => mmss(s).replace(/^0(\d)/, "$1");
 
@@ -110,14 +110,8 @@ function CoachesBody({ game: g, roster, stints, estimated }: { game: Game; roste
 
   return (
     <div className="pg-coaches">
-      <header className="top">
-        <div className="wrap">
-          <span className="eyebrow"><T t={C.eyebrow} /></span>
-          <h1><T t={C.title} />{C.titleAccent ? <> <span><T t={C.titleAccent} /></span></> : null}</h1>
-          <p><T t={C.intro} /></p>
-          <div className="meta">{C.meta.map((m, i) => <span key={i}><T t={m} /></span>)}</div>
-        </div>
-      </header>
+      <PageLead eyebrow={<T t={C.eyebrow} />} title={<><T t={C.title} />{C.titleAccent ? <> <span><T t={C.titleAccent} /></span></> : null}</>}
+        lead={<T t={C.intro} />} facts={C.meta.map((m, i) => <T key={i} t={m} />)} />
 
       <main className="wrap">
         <Toc items={[["priorities", t("priorities")], ["thirds", t("byThird")], ["units", t("byUnit")], ["plan", t("trainingPlan")], ["clips", t("clips")],

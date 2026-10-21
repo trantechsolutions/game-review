@@ -52,6 +52,18 @@ export function SecHead({ g, page, id, eyebrow, title, sub, count }: {
   );
 }
 
+/** The top of a game page, under the shared game header: what this page is, and its own lead. */
+export function PageLead({ eyebrow, title, lead, facts }: { eyebrow: ReactNode; title?: ReactNode; lead?: ReactNode; facts?: ReactNode[] }) {
+  return (
+    <div className="page-lead wrap">
+      <span className="eyebrow">{eyebrow}</span>
+      {title ? <h2 className="pl-title">{title}</h2> : null}
+      {lead ? <p className="pl-lead">{lead}</p> : null}
+      {facts?.length ? <div className="pl-facts">{facts.map((f, i) => <span key={i}>{f}</span>)}</div> : null}
+    </div>
+  );
+}
+
 /** In-page section links. The router owns the URL hash, so these scroll instead of navigating. */
 export function Toc({ items }: { items: [id: string, label: string][] }) {
   const { t } = useI18n();

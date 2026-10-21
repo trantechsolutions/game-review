@@ -155,8 +155,21 @@ footer.foot b { color: var(--ink); }
   .record b { color: #ffffff; font-weight: 500; }
   main { padding-top: clamp(28px, 5vw, 44px); display: grid; gap: 14px; max-width: 980px; }
   .games { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 8px; }
-  .game { display: grid; grid-template-columns: 7.5rem minmax(16rem, 1fr) auto; align-items: center; gap: 10px 20px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
-  @media (max-width: 1180px) { .game { grid-template-columns: 7.5rem minmax(0, 1fr); } .game .links { grid-column: 2; justify-content: flex-start; } }
+  .game { display: grid; grid-template-columns: 7.5rem minmax(14rem, 1fr) auto; align-items: center; gap: 10px 20px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+  .when { display: grid; gap: 10px; align-content: start; }
+  /* Narrower: the page links drop under the game, beside the date column. */
+  @media (max-width: 1180px) {
+    .game { grid-template-columns: 7.5rem minmax(0, 1fr); align-items: start; }
+    .when { grid-row: span 2; }
+    .game .links.more { grid-column: 2; }
+  }
+  /* Highlights and the match report: one tap each, under the date. */
+  .quick { display: flex; gap: 8px; }
+  .qbtn { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line-strong); color: var(--ink); text-decoration: none; }
+  .qbtn:hover, .qbtn:focus-visible { border-color: var(--ink); background: var(--surface-2); }
+  .qbtn svg { width: 19px; height: 19px; }
+  .qbtn.hl svg { fill: var(--dfc-ink); margin-left: 2px; }
+  .qbtn.rep svg { fill: none; stroke: var(--ink); stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; }
   .game:last-child { border-bottom: 0; }
   .date { font: 500 0.85rem/1.35 var(--mono); font-variant-numeric: tabular-nums; color: var(--muted); }
   .date b { display: block; color: var(--ink); font-weight: 500; }
@@ -168,6 +181,8 @@ footer.foot b { color: var(--ink); }
   .res i { font-style: normal; font: 700 0.7rem/1 var(--body); letter-spacing: 0.06em; padding: 4px 6px; border-radius: 3px; color: var(--on-accent); }
   .res i.W { background: var(--win); } .res i.D { background: var(--draw); } .res i.L { background: var(--loss); }
   .links { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+  .game .links.more { justify-content: flex-end; }
+  @media (max-width: 1180px) { .game .links.more { justify-content: flex-start; } }
   .links a { font: 600 0.82rem/1 var(--body); text-decoration: none; color: var(--ink); padding: 10px 13px; border: 1px solid var(--line-strong); border-radius: 999px; white-space: nowrap; }
   .links a:hover { border-color: var(--ink); }
   .links a.pbp::before, .links a.coach::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; vertical-align: 1px; }
@@ -180,7 +195,8 @@ footer.foot b { color: var(--ink); }
   footer.foot { padding-top: 28px; max-width: 70ch; }
   @media (max-width: 680px) {
     .game { grid-template-columns: minmax(0, 1fr); }
-    .game .links { grid-column: 1; }
+    .game .links, .game .links.more { grid-column: 1; }
+    .when { grid-template-columns: minmax(0, 1fr) auto; align-items: center; grid-row: auto; }
     .date b { display: inline; margin-right: 8px; }
     .links { justify-content: flex-start; }
   }
@@ -964,3 +980,83 @@ footer.foot b { color: var(--ink); }
 .kp-heard li { padding: 6px 8px; border-left: 3px solid var(--line-strong); background: var(--surface-2); border-radius: 4px; font-size: 0.85rem; }
 .kp-heard li.ok { border-left-color: var(--dfc); }
 .kp-heard li.bad { border-left-color: var(--red); }
+
+/* ---------- Ollie Sports game history ---------- */
+.hist-tools { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: end; margin-block: 4px 12px; }
+.hist-tools label:not(.check) { display: grid; gap: 4px; font-size: 0.8rem; font-weight: 600; }
+.hist-tools select, .hist-tools input[type="search"] {
+  font: inherit; font-weight: 400; min-height: 40px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink);
+}
+.nums.hist td, .nums.hist th { white-space: nowrap; }
+.nums.hist tbody th { font-weight: 600; white-space: normal; min-width: 12em; }
+.hist-row { cursor: pointer; }
+.hist-row:hover { background: var(--surface); }
+.hist-row.open { background: var(--surface-2); }
+.hist-open { padding: 4px 10px; min-width: 34px; }
+.hist-detail > td { background: var(--surface); padding: 12px 14px 16px; font-family: var(--body); white-space: normal; }
+.hist-body { display: grid; gap: 12px; }
+.hist-tabs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.hist-tabs .btn-line.on { border-color: var(--dfc); color: var(--dfc-ink); }
+.hist-tabs .btn-line:disabled { opacity: 0.4; cursor: default; }
+.nums.hist-stats { max-width: 560px; }
+.nums.hist-stats td { text-align: center; font-variant-numeric: tabular-nums; }
+.nums.hist-stats tbody th { text-align: center; font-weight: 500; color: var(--muted); min-width: 0; }
+.nums.hist-players th, .nums.hist-players td { white-space: nowrap; }
+.hist-foot { margin-top: 12px; }
+
+.hist-record { display: grid; gap: 10px; margin-bottom: 16px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.hist-record-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; justify-content: space-between; }
+.hist-record-head .muted { font-size: 0.85rem; }
+.hist-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.hist-tiles .ms { display: grid; gap: 4px; padding: 10px 12px; border-radius: 8px; background: var(--surface-2); }
+.hist-tiles .vals { font: 800 1.5rem/1.1 var(--display); }
+.hist-tiles .muted { font-size: 0.8rem; }
+.nums.hist-venue { max-width: 560px; }
+
+/* ---------- Game template: the shared header, the page tabs, each page's lead ---------- */
+.gh {
+  background: #000000; color: #ffffff; margin-inline: calc(-1 * var(--gutter));
+  padding: clamp(14px, 2.4vw, 22px) var(--gutter) clamp(10px, 1.8vw, 16px);
+}
+.gh .wrap { display: grid; gap: 10px; }
+.gh-top { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; justify-content: space-between; }
+.gh-top .eyebrow { color: #9fb0be; }
+.gh-back { font: 600 0.85rem/1 var(--body); color: #acd3f2; text-decoration: none; }
+.gh-back:hover { text-decoration: underline; }
+.gh-main { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: flex-end; justify-content: space-between; }
+.gh-score { font: 900 clamp(2.1rem, 6vw, 3.6rem)/0.92 var(--display); text-transform: uppercase; letter-spacing: 0.005em; }
+.gh-score .d { color: #acd3f2; }
+.gh-score .o { color: #c7a566; }
+.gh-score .n { color: #ffffff; white-space: nowrap; }
+.gh-facts { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font: 500 0.85rem/1.2 var(--body); color: #ffffff; }
+.gh-facts .ht { font-family: var(--mono); color: #9fb0be; }
+.gh-facts .goal::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: #acd3f2; }
+.gh-facts .goal.O::before { background: #c7a566; }
+.gh-step { display: flex; justify-content: space-between; gap: 12px; font: 500 0.8rem/1.2 var(--body); }
+.gh-step a { color: #9fb0be; text-decoration: none; max-width: 48%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gh-step a:hover { color: #ffffff; }
+
+/* The game's pages: tabs that stay at the top while the page scrolls. */
+.gtabs {
+  position: sticky; top: 0; z-index: 30; background: #000000; border-bottom: 1px solid #2a3642;
+  margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter);
+}
+.gtabs .wrap { display: flex; gap: 2px 22px; overflow-x: auto; scrollbar-width: none; }
+.gtabs .wrap::-webkit-scrollbar { display: none; }
+.gtabs a {
+  flex: none; padding: 13px 0 11px; font: 700 0.86rem/1 var(--body); color: #9fb0be; text-decoration: none;
+  border-bottom: 3px solid transparent; white-space: nowrap;
+}
+.gtabs a:hover { color: #ffffff; }
+.gtabs a[aria-current="page"] { color: #ffffff; border-bottom-color: #acd3f2; }
+
+/* A page's own section links sit just under the tabs, also in view while scrolling. */
+.gtabs ~ * nav.toc { position: sticky; top: 42px; z-index: 20; background: var(--bg); padding-block: 12px; }
+.gtabs ~ * section.sec, .gtabs ~ * [id^="unit-"] { scroll-margin-top: 104px; }
+
+.page-lead { display: grid; gap: 10px; padding-block: clamp(20px, 3vw, 30px) 4px; }
+.pl-title { font: 900 clamp(1.8rem, 4.4vw, 2.9rem)/0.95 var(--display); text-transform: uppercase; max-width: 26ch; }
+.pl-title span { color: var(--dfc-ink); }
+.pl-lead { max-width: 72ch; font-size: 1.02rem; line-height: 1.6; color: var(--ink); }
+.pl-facts { display: flex; flex-wrap: wrap; gap: 8px; }
+.pl-facts span { font: 500 0.84rem/1.2 var(--body); padding: 7px 11px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--ink); }

@@ -16,6 +16,7 @@ import { KeepEntry, KeeperRoster, type Lineup } from "../schema";
 import { clockAt, clockStr, goalZone, ordered, placeAll, replay, restartFor, SHAPES, slugFor, stats, tapEvent, toLineup, toRaw, type Ev, type EvFields } from "./keeplog";
 import { deriveKeeperKeys, keeperScope, KEEPER_ROSTER_PATH, openEntry, sealEntry } from "./keeperCrypto";
 import { parseVoice, runVoice, words } from "./voice";
+import { fmtStat, matchInApp, seasonOf, summarize } from "./ollie";
 import { gameMinute, mmss, videoSec, workingClip } from "./time";
 
 describe("time", () => {
@@ -641,5 +642,46 @@ describe("voice", () => {
       { pos: "GK", player: "Gus Lee" }, { pos: "LB", player: "Ana Ruiz" }, { pos: "RCB", player: "Bea Cole" },
       { pos: "ST", player: "Dee Park" }, { pos: "LM", player: "Lucas Rodriguez" }, { pos: "CM", player: "Cal Mason" },
     ]);
+  });
+});
+
+describe("ollie history", () => {
+  const app = [
+    { slug: "2026-10-10-hfc", date: "2026-10-10", opponent: "HFC", us: 2, them: 1 },
+    { slug: "2026-10-10-csc-eagles", date: "2026-10-10", opponent: "CSC Eagles", us: 0, them: 3 },
+    { slug: "2026-10-18-brsc-black", date: "2026-10-18", opponent: "BRSC Black", us: 0, them: 5 },
+  ];
+  it("matches library games by date, then score or opponent", () => {
+    const m = matchInApp([
+      { id: "a", date: "2026-10-10", opponent: "CSC Eagles U13 White", us: 0, them: 3 },
+      { id: "b", date: "2026-10-10", opponent: "HFC 13/14 Thunder", us: 2, them: 1 },
+      { id: "c", date: "2026-10-18", opponent: "BRSC 13/4 Black", us: 0, them: 5 },
+      { id: "d", date: "2025-03-01", opponent: "Lionheart", us: 4, them: 0 },
+    ], app);
+    expect(Object.fromEntries(m)).toEqual({ a: "2026-10-10-csc-eagles", b: "2026-10-10-hfc", c: "2026-10-18-brsc-black" });
+    // Two Ollie games on a day the library has once, neither score nor name agreeing: left unmatched.
+    expect(matchInApp([{ id: "x", date: "2026-10-18", opponent: "Foo", us: 1, them: 1 }, { id: "y", date: "2026-10-18", opponent: "Bar", us: 2, them: 2 }], app).size).toBe(0);
+  });
+  it("sums up the record, averages and venue split for the games shown", () => {
+    const st = (own: number, opp: number) => ({ own: { tShots: own, tPossessionPerc: 0.6 }, opp: { tShots: opp, tPossessionPerc: 0.4 } });
+    const s = summarize([
+      { us: 3, them: 0, home: true, stats: st(8, 2) }, { us: 1, them: 1, home: false, stats: st(4, 6) },
+      { us: 0, them: 2, home: null, stats: null },
+    ]);
+    expect(s).toMatchObject({ n: 3, W: 1, D: 1, L: 1, gf: 4, ga: 3, cleanSheets: 1 });
+    expect(s.avg.shots).toEqual([6, 4]);
+    expect(s.avg.possession).toEqual([0.6, 0.4]);
+    // A game with no possession recorded doesn't drag the average down.
+    expect(summarize([{ us: 1, them: 0, home: null, stats: { own: { tPossessionPerc: 0.7 }, opp: { tPossessionPerc: 0.3 } } }, { us: 0, them: 0, home: null, stats: { own: {}, opp: {} } }]).avg.possession).toEqual([0.7, 0.3]);
+    expect(s.venue.home).toMatchObject({ n: 1, W: 1 });
+    expect(s.venue.unknown).toMatchObject({ n: 1, L: 1 });
+  });
+
+  it("names seasons August to July and prints Ollie's numbers", () => {
+    expect(seasonOf("2026-08-01")).toBe("2026–27");
+    expect(seasonOf("2026-07-31")).toBe("2025–26");
+    expect(fmtStat(0.634, "pct")).toBe("63%");
+    expect(fmtStat(2_700_000, "min")).toBe("45");
+    expect(fmtStat(undefined)).toBe("—");
   });
 });

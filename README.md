@@ -42,6 +42,7 @@ tools/make_highlights.py   cuts highlight clips from a full-game video
 tools/e2e.mjs              browser test of a local build in both languages
 tools/notes/               coach-notes database setup and admin
 tools/keeper/              scorekeeper stat-log database setup, admin and import (keeper.ts pull)
+tools/ollie/pull.ts        pulls the Ollie Sports game history (sign in through the saved Ollie web app)
 tools/kdf.json             key-derivation salt and iterations (not secret)
 ```
 
@@ -157,6 +158,20 @@ After a game:
 `npx tsx tools/keeper/keeper.ts forget <slug>` removes a whole game from the stat logs, such as a test or a game started twice.
 
 To change the scorekeeper password, put the new one in `private/.keeper-password.new` and run `npx tsx tools/keeper/keeper.ts rotate`, then rebuild and push.
+
+## Ollie Sports history
+
+The **Game history** tab lists every game kept in Ollie Sports that the library doesn't already break down, newest first. It shows the date, opponent, result, possession, shots and shots on goal, with a season filter and an opponent search. Tapping a game opens Ollie's full team numbers for the whole game and each half. With the coach area unlocked, it also shows each player's minutes, goals, assists, shots, passes and so on. A switch brings back the games the library already has, with a link to each one's breakdown.
+
+To add or refresh it:
+
+1. Run `npx tsx tools/ollie/pull.ts`. Add `--team "13/14B Black"` to pull one team only.
+2. It serves the saved Ollie web app from `docs/reference/ollie-web` and opens it in a browser window. Sign in to Ollie there; the profile in `private/.ollie-profile` keeps you signed in for next time.
+3. The tool reads, from Ollie's database: the account's teams, each team's finished games, each game's calendar entry (date, opponent), the stat snapshots (whole game and both halves) and the players.
+4. It writes `private/data/ollie/history.json` (team stats, plus which library game each one is), `players.json` (player stats) and `raw.json` (Ollie's answers, for checking). Nothing about the sign-in is saved.
+5. Run `npm run build`, then commit and push. The history is encrypted with the team password; player stats name players, so they're encrypted with the coach password.
+
+`npm run validate` checks the history against its schema and that every library match points at a real game. Library games are matched by date, then by the same score or a shared opponent word.
 
 ## Clip storage (Cloudflare R2)
 
