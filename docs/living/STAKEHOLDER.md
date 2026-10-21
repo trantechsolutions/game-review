@@ -2,6 +2,15 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-21 — NOLA DFC Manager connection (129c8c6..129c8c6)
+
+- The game film site now opens straight from NOLA DFC Manager, with no password to type. Families see the games. Coaches also get the coach area. Anyone given the Scorekeeper role also gets the scorekeeper screen.
+- In the manager's schedule, games that have been broken down now show **Match report** and **Highlights** buttons.
+- Setting up a new game in the scorekeeper is one tap: pick it from the team schedule and the opponent, date, kickoff and venue fill in.
+- Stats kept from a manager account are recorded under that person's name. If the account loses its role, nothing on the phone is lost. It asks you to open Keep stats from the manager again.
+- Each player's season numbers (minutes, starts, goals, assists, shots, cards) now appear on their profile in the manager, including for their parents.
+- The passwords still work for anyone without a manager account.
+
 ## 2026-10-20 — Ollie game history and a clearer game layout (b9ef61f..b9ef61f)
 
 - The site now opens on the season overview. The list of reviewed games is its own tab, "Game film library".

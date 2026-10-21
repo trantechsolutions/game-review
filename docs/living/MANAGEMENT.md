@@ -2,6 +2,28 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-21 — NOLA DFC Manager connection (129c8c6..129c8c6)
+
+**Delivered.**
+- **Single sign-in:** the site opens unlocked from the manager, with access set by each account's team role: games for everyone, the coach area for staff, the scorekeeper for the new Scorekeeper role.
+- **Shared database:** the site now runs on the manager's Supabase project, so there is one backend to maintain.
+- **Two-way data:** the manager's roster and schedule flow into the site. Breakdown links and per-player season stats flow back into the manager.
+- **Accountable scorekeeping:** entries sent from a manager account carry who sent them, and stop when the role is removed.
+
+**Decisions.**
+- **The manager is the source of truth** for players, names and numbers. Positions stay with the film site, and departed players are kept so old games still read correctly.
+- **Keys travel in the link's `#` part,** which browsers never send to a server, and each account only receives what its role allows.
+- **Passwords are kept as a fallback** for volunteers without accounts.
+- **One source per game for stats:** a game recorded in several places is counted once, from the best source.
+
+**Risk.**
+- A sync tool uses the manager's full-access database key. It is held only on the coach's PC, outside the repository.
+- Four one-time SQL migrations in the manager project are prerequisites. Features whose migration hasn't been run won't work until it is.
+
+**Open.**
+- Schedule, games and stats syncs are run by hand after each build, not automatically.
+- The scorekeeper's live screen still scrolls on a sideways phone. A layout fix is identified but not yet made.
+
 ## 2026-10-20 — Ollie game history and a clearer game layout (b9ef61f..b9ef61f)
 
 **Delivered.**

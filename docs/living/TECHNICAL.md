@@ -2,6 +2,19 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-21 — NOLA DFC Manager connection (129c8c6..129c8c6)
+
+- **Supabase move:** `app/src/config.ts` points `SUPABASE_URL` and `SUPABASE_ANON_KEY` at the manager's project. Notes and stat logs are copied over by `tools/manager/manager.ts migrate`.
+- **Unlock from the manager:** `app/src/lib/unlock.ts` (`takeUnlock`, called first in `main.tsx`) reads keys from the URL fragment, stores them as a typed password would, and replaces the address. The keys come from the manager's `film_sites` table through `film_access()` (`nola-dfc-manager/sql/game_film_migration.sql`).
+- **Scorekeeper under accounts:** `keeper.tsx` keeps an optional account token (`u` in the stored keys). With a token it calls `keeper_{append,list,forget}_as` (`p_token`); otherwise `keeper_*` (`p_key`). A `42501` with a token sets the new `SyncState` `"expired"`, shown by `SyncBadge` (`kp_syncExpired`). Needs `keeper_accounts_migration.sql`.
+- **Schedule:** `schema.ts` adds `ScheduledGame`, `KeeperRoster.schedule` and `KeepSetup.eventId`. `tools/build.mjs` seals `private/data/schedule.json` into the keeper squad file and adds schedule opponents (3+ chars) to the leak check. `lib/schedule.ts` (`upcoming`) feeds a "From the team schedule" picker in `Keep.tsx` setup (`.kp-sched*` styles).
+- **Roster and stats:** `lib/rosterMerge.ts` merges the manager roster into `roster.json` (adds `managerId`, renames in `lineups.json`, keeps departed players). `lib/playerStats.ts` builds per-season player stats from lineups, keeper logs and Ollie, one source per game.
+- **Tooling:** `tools/manager/manager.ts` with `teams`, `setup-sql`, `migrate`, `link`, `check`, `roster`, `schedule`, `games` and `stats` (`--dry-run` where it writes). Reads `private/.manager.json` (service-role key, never committed). README section added.
+- **Build output:** rebuilt `public/` (new hashed assets, re-sealed `.bin` files).
+- **Not committed:** `docs/reference/` (local copy of the Ollie web app) stays out of the public repo.
+- **Tests:** vitest 72/72 (was 56), adding schedule, roster merge and player stats cases.
+- **Rollback:** revert 129c8c6 and run `npm run build`. Reverting `config.ts` alone points the app back at the old Supabase project, which still holds the data from before the migration.
+
 ## 2026-10-20 — Ollie game history and a clearer game layout (b9ef61f..b9ef61f)
 
 - **Ollie history:**
