@@ -12,11 +12,16 @@ import { season, statOf, themes } from "./season";
 import { lineupFor, playLineup, positionsOf, secondsOn, whoAt, whoPlayed } from "./lineup";
 import { nameMoment } from "./naming";
 import { playerSeasons } from "./players";
-import { KeepEntry, KeeperRoster, type Lineup } from "../schema";
+import { KeepEntry, KeeperRoster, Roster, type Lineup, type Lineups } from "../schema";
 import { clockAt, clockStr, goalZone, ordered, placeAll, replay, restartFor, SHAPES, slugFor, stats, tapEvent, toLineup, toRaw, type Ev, type EvFields } from "./keeplog";
 import { deriveKeeperKeys, keeperScope, KEEPER_ROSTER_PATH, openEntry, sealEntry } from "./keeperCrypto";
 import { parseVoice, runVoice, words } from "./voice";
 import { fmtStat, matchInApp, seasonOf, summarize } from "./ollie";
+import { applyUnlock, landing, readUnlock, STORES } from "./unlock";
+import { localParts, matchGame, parseTitle, toSchedule, upcoming, type ManagerEvent } from "./schedule";
+import { ScheduledGame, type OlliePlayers } from "../schema";
+import { fromKeeper, fromLibrary, fromOllie, managerSeason, rosterMatcher, sameGames, seasonStats } from "./playerStats";
+import { formatRoster, mergeRoster, renameInJson } from "./rosterMerge";
 import { gameMinute, mmss, videoSec, workingClip } from "./time";
 
 describe("time", () => {
@@ -683,5 +688,185 @@ describe("ollie history", () => {
     expect(fmtStat(0.634, "pct")).toBe("63%");
     expect(fmtStat(2_700_000, "min")).toBe("45");
     expect(fmtStat(undefined)).toBe("—");
+  });
+});
+
+describe("opening from NOLA DFC Manager", () => {
+  const enc = (o: unknown) => "#unlock=" + Buffer.from(JSON.stringify(o)).toString("base64url");
+  const key = Buffer.alloc(32, 7).toString("base64");
+  const coach = { a: "QWxsLXRoZS1hY2Nlc3MtYml0cw", e: Buffer.alloc(32, 1).toString("base64"), c: Buffer.alloc(32, 2).toString("base64") };
+  it("reads the keys the manager sends, and nothing that doesn't look like them", () => {
+    expect(readUnlock(enc({ v: 1, t: key, c: coach, to: "season" }))).toEqual({ t: key, c: coach, to: "season" });
+    expect(readUnlock(enc({ v: 1, k: { a: coach.a, e: coach.e, r: coach.c }, to: "keep" }))).toEqual({ k: { a: coach.a, e: coach.e, r: coach.c }, to: "keep" });
+    expect(readUnlock("#/season")).toBeNull();
+    expect(readUnlock(enc({ v: 2, t: key }))).toBeNull();
+    expect(readUnlock(enc({ v: 1, t: "<script>" }))).toBeNull();
+    expect(readUnlock("#unlock=not-json")).toBeNull();
+  });
+  it("lands on one game's report or highlights, and only on a real game address", () => {
+    const u = readUnlock(enc({ v: 1, t: key, to: "game", g: "2026-03-01-test-fc", p: "highlights" }))!;
+    expect(u).toEqual({ t: key, to: "game", g: "2026-03-01-test-fc", p: "highlights" });
+    expect(landing(u)).toBe("/game/2026-03-01-test-fc/highlights");
+    expect(landing(readUnlock(enc({ v: 1, t: key, to: "game", g: "2026-03-01-test-fc" }))!)).toBe("/game/2026-03-01-test-fc/report");
+    expect(readUnlock(enc({ v: 1, t: key, to: "game", g: "../../evil" }))).toEqual({ t: key, to: "season" });
+    expect(landing({ to: "keep" })).toBe("/keep");
+  });
+  it("keeps the manager account's scorekeeper token, and only a real one", () => {
+    const k = { a: coach.a, e: coach.e, r: coach.c };
+    const u = "ab".repeat(32);
+    expect(readUnlock(enc({ v: 1, k: { ...k, u }, to: "keep" }))?.k).toEqual({ ...k, u });
+    expect(readUnlock(enc({ v: 1, k: { ...k, u: "nope" }, to: "keep" }))?.k).toEqual(k);
+    const store = new Map<string, string>();
+    applyUnlock({ k: { ...k, u }, to: "keep" }, { setItem: (key, v) => void store.set(key, v) });
+    expect(JSON.parse(store.get(STORES.keeper)!)).toEqual({ ...k, u });
+  });
+  it("stores them where the password forms do", () => {
+    const store = new Map<string, string>();
+    applyUnlock({ t: key, c: coach, to: "season" }, { setItem: (k, v) => void store.set(k, v) });
+    expect(store.get(STORES.film)).toBe(key);
+    expect(JSON.parse(store.get(STORES.notes)!)).toEqual(coach);
+    expect(store.has(STORES.keeper)).toBe(false);
+  });
+});
+
+describe("roster from the manager", () => {
+  const current = { players: [
+    { name: "Franklin Martínez", number: 16, positions: ["CM", "LM"] },
+    { name: "Adam Aly", number: 10, positions: ["ST"] },
+    { name: "Old Player", number: 4, positions: ["CB"] },
+  ] };
+  const mp = (id: string, first: string, last: string, jersey: string | null, status = "active") => ({ id, first_name: first, last_name: last, jersey_number: jersey, status });
+  const ids = ["11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222", "33333333-3333-4333-8333-333333333333", "44444444-4444-4444-8444-444444444444"];
+  it("links players, keeps positions, takes the manager's names and numbers, adds new ones", () => {
+    const m = mergeRoster(current, [
+      mp(ids[0], "Franklin", "Martinez", "16"),     // same name without the accent
+      mp(ids[1], "Adam", "Aly-Smith", "10"),        // surname corrected; same first name and number
+      mp(ids[2], "New", "Kid", "23"),
+      mp(ids[3], "Gone", "Away", "4", "archived"),
+    ]);
+    expect(m.roster.players.map(p => [p.name, p.number, p.positions.join(","), p.managerId])).toEqual([
+      ["Franklin Martinez", 16, "CM,LM", ids[0]], ["Adam Aly-Smith", 10, "ST", ids[1]], ["Old Player", 4, "CB", undefined], ["New Kid", 23, "", ids[2]],
+    ]);
+    expect(m.added).toEqual(["New Kid"]);
+    expect(m.renamed).toEqual([["Franklin Martínez", "Franklin Martinez"], ["Adam Aly", "Adam Aly-Smith"]]);
+    expect(m.notListed).toEqual(["Old Player"]);
+    // The live database sends numbers as numbers.
+    expect(mergeRoster({ players: [] }, [{ ...mp(ids[0], "Num", "Ber", null), jersey_number: 7 }]).roster.players[0].number).toBe(7);
+    // Linked once, matched by id next time even after a rename in the manager.
+    const again = mergeRoster(m.roster, [mp(ids[1], "Adam", "Aly", "10")]);
+    expect(again.renamed).toEqual([["Adam Aly-Smith", "Adam Aly"]]);
+  });
+  it("writes roster.json one player per line and renames players in lineups", () => {
+    const text = formatRoster({ players: [{ name: "Ana Ruiz", number: 4, positions: ["CB"], managerId: ids[0] }, { name: "No Number", positions: [] }] });
+    expect(Roster.parse(JSON.parse(text)).players).toHaveLength(2);
+    expect(text.split("\n")[2]).toBe(`    { "name": "Ana Ruiz", "number": 4, "positions": ["CB"], "managerId": "${ids[0]}" },`);
+    expect(renameInJson('{ "start": [{ "pos": "ST", "player": "Adam Aly" }], "x": "Adam Aly Jr" }', [["Adam Aly", "Adam Aly-Smith"]]))
+      .toBe('{ "start": [{ "pos": "ST", "player": "Adam Aly-Smith" }], "x": "Adam Aly Jr" }');
+  });
+});
+
+describe("the manager's schedule", () => {
+  const us = ["DFC", "DFC 2014/2015B Black (U13)"];
+  it("reads the opponent from the usual calendar titles", () => {
+    expect(parseTitle("DFC – Game vs Test FC", us)).toEqual({ opponent: "Test FC", home: null });
+    expect(parseTitle("Game @ Test FC (LCSL)", us)).toEqual({ opponent: "Test FC", home: false });
+    expect(parseTitle("Test FC – DFC", us)).toEqual({ opponent: "Test FC", home: null });
+    expect(parseTitle("DFC - Game - Test FC", us)).toEqual({ opponent: "Test FC", home: null });
+    expect(parseTitle("(Cancelled) Game vs. Test FC", us)).toEqual({ opponent: "Test FC", home: null });
+    expect(parseTitle("Team photos", us)).toEqual({ opponent: "", home: null });
+  });
+  it("gives each game its local date and kickoff", () => {
+    expect(localParts("2026-03-01T23:30:00Z", "America/Chicago")).toEqual({ date: "2026-03-01", time: "17:30" });
+    expect(localParts("2026-03-02T03:00:00Z", "America/Chicago")).toEqual({ date: "2026-03-01", time: "21:00" });
+  });
+  const ev = (id: number, at: string, title: string, type = "league", cancelled = false): ManagerEvent =>
+    ({ id: `00000000-0000-4000-8000-${String(id).padStart(12, "0")}`, title, location: "Field 3", event_date: at, event_type: type, is_cancelled: cancelled });
+  const sched = toSchedule([
+    ev(3, "2026-03-08T15:00:00Z", "Spring Cup", "tournament"),
+    ev(1, "2026-03-01T23:30:00Z", "Game @ Test FC"),
+    ev(2, "2026-03-01T18:00:00Z", "Practice", "practice"),
+    ev(4, "2026-03-04T23:00:00Z", "Game vs Other SC", "friendly", true),
+    ev(5, "2026-03-05T23:00:00Z", "Game vs Other SC", "friendly"),
+  ], { timeZone: "America/Chicago", teamNames: us });
+  it("keeps only games, in order, in the shape the scorekeeper file checks", () => {
+    expect(sched.map(g => g.title)).toEqual(["Game @ Test FC", "Game vs Other SC", "Spring Cup"]);
+    expect(sched[0]).toMatchObject({ date: "2026-03-01", time: "17:30", opponent: "Test FC", home: false, location: "Field 3", tournament: false });
+    expect(sched[2]).toMatchObject({ opponent: "", tournament: true });
+    for (const g of sched) expect(() => ScheduledGame.parse(g)).not.toThrow();
+    expect(KeeperRoster.safeParse({ us: "X", players: [], schedule: sched }).success).toBe(true);
+  });
+  it("offers today's game first, then the next few days'", () => {
+    expect(upcoming(sched, "2026-03-01").map(g => g.title)).toEqual(["Game @ Test FC", "Game vs Other SC"]);
+    expect(upcoming(sched, "2026-03-02").map(g => g.title)).toEqual(["Game vs Other SC", "Spring Cup"]);
+    expect(upcoming(sched, "2026-04-01")).toEqual([]);
+  });
+  it("finds a game file's game: by opponent, else the only game that day, else the tournament that weekend", () => {
+    expect(matchGame({ date: "2026-03-01", opponent: "Test FC" }, sched)?.title).toBe("Game @ Test FC");
+    expect(matchGame({ date: "2026-03-05", opponent: "Somebody" }, sched)?.title).toBe("Game vs Other SC");
+    expect(matchGame({ date: "2026-03-09", opponent: "Cup Team" }, sched)?.title).toBe("Spring Cup");
+    expect(matchGame({ date: "2026-03-20", opponent: "Test FC" }, sched)).toBeNull();
+    expect(matchGame({ date: "2026-03-04", opponent: "Other SC" }, sched)).toBeNull(); // cancelled
+  });
+});
+
+describe("season numbers for the manager", () => {
+  const roster = { players: [{ name: "Ana Ruiz", number: 4, positions: ["CB"] }, { name: "Bea Lopez", number: 9, positions: ["ST"] }, { name: "Cy Diaz", number: 1, positions: ["GK"] }] } as Roster;
+  const names = roster.players.map(p => p.name);
+  const game = (date: string, opponent: string) => fixtureGame({ slug: `${date}-x`, date, opponent }); // two 30:20 halves
+  const lineups: Lineups = { games: {
+    "2025-09-06-x": { start: [{ pos: "CB", player: "Ana Ruiz" }, { pos: "ST", player: "Bea Lopez" }], changes: [{ h: 2, c: "10:00", off: "Bea Lopez", on: "Cy Diaz" }] },
+  } };
+  const at = (n: number) => n * 1000;
+  const keeperGame = (date: string, opponent: string): KeepEntry[] => {
+    const setup = { slug: `${date}-k`, date, time: "", opponent, home: null, format: 7, halfMin: 30, level: "advanced" as const, start: [{ pos: "ST", player: "Bea Lopez" }] };
+    return [
+      { id: "setup-0001", at: at(0), k: "setup", setup },
+      { id: "clock-0001", at: at(1), k: "clock", h: 1, c: "0:00", run: true },
+      { id: "goal-00001", at: at(2), k: "ev", h: 1, c: "5:00", type: "Goal", t: "D", player: "Bea Lopez", assist: "Ana Ruiz" },
+      { id: "shot-00001", at: at(3), k: "ev", h: 1, c: "6:00", type: "Shot", t: "D", player: "Bea Lopez", result: "off" },
+      { id: "yell-00001", at: at(4), k: "ev", h: 1, c: "7:00", type: "Yellow", t: "D", player: "Ana Ruiz" },
+      { id: "end1-00001", at: at(5), k: "end", h: 1, c: "30:00" },
+    ] as KeepEntry[];
+  };
+
+  it("uses the manager's July–June seasons", () => {
+    expect(managerSeason("2025-07-01")).toBe("2025-2026");
+    expect(managerSeason("2026-06-30")).toBe("2025-2026");
+  });
+  it("reads minutes, starts and positions from a lineup", () => {
+    const [g] = fromLibrary([game("2025-09-06", "Test FC")], lineups);
+    expect(g.time!.players.get("Bea Lopez")).toMatchObject({ started: true, seconds: 1820 + 600 });
+    expect(g.time!.players.get("Cy Diaz")).toMatchObject({ started: false, seconds: 1220 });
+  });
+  it("reads named goals, assists, shots and cards from a scorekeeper log", () => {
+    const [g] = fromKeeper([keeperGame("2025-09-06", "Test FC")]);
+    expect(g.events!.get("Bea Lopez")).toEqual({ goals: 1, assists: 0, shots: 2, onTarget: 1, yellow: 0, red: 0 });
+    expect(g.events!.get("Ana Ruiz")).toMatchObject({ assists: 1, yellow: 1 });
+  });
+  it("places Ollie's players on the roster by name, then shirt number", () => {
+    const m = rosterMatcher(roster);
+    expect(m("ana ruíz", null)).toBe("Ana Ruiz");
+    expect(m("Beatriz Maria Lopez", null)).toBeNull();
+    expect(m("Someone", "9")).toBe("Bea Lopez");
+  });
+  it("counts each game once, taking time from the lineup and goals from the scorekeeper over Ollie", () => {
+    const history = [{ id: "o1", team: "t", date: "2025-09-06", time: "", opponent: "Test FC Red", home: null, us: 1, them: 0, statMode: "advanced", inApp: null, stats: null, halves: { first: null, second: null } },
+      { id: "o2", team: "t", date: "2025-10-04", time: "", opponent: "Other", home: null, us: 2, them: 0, statMode: "advanced", inApp: null, stats: null, halves: { first: null, second: null } }];
+    const players: OlliePlayers = { games: {
+      o1: [{ name: "Bea Lopez", number: "9", stats: { pPlayingTimeMS: 3_000_000, pGoals: 3 } }],
+      o2: [{ name: "Ana Ruiz", number: "4", stats: { pPlayingTimeMS: 2_400_000, pGoals: 2, pShots: 3 } }, { name: "Zed", number: "77", stats: { pGoals: 1 } }],
+    } };
+    const ollie = fromOllie(history, players, roster);
+    expect(ollie.unknown).toEqual(["Zed"]);
+    const all = [...fromLibrary([game("2025-09-06", "Test FC")], lineups), ...fromKeeper([keeperGame("2025-09-06", "Test FC")]), ...ollie.games];
+    expect(sameGames(all).map(c => c.map(g => g.kind))).toEqual([["lineup", "keeper", "ollie"], ["ollie"]]);
+    const s = seasonStats(all, names).get("2025-2026")!;
+    const bea = s.get("Bea Lopez")!;
+    expect(bea).toMatchObject({ games: 1, minutes: 40, starts: 1, goals: 1, shots: 2, timedGames: 2, eventGames: 2 });
+    expect(bea.sources.sort()).toEqual(["keeper", "lineup"]);
+    const ana = s.get("Ana Ruiz")!;
+    expect(ana).toMatchObject({ games: 2, minutes: 61 + 40, goals: 2, assists: 1, yellow: 1, starts: 1 });
+    expect(ana.positions).toEqual([{ pos: "CB", minutes: 61 }]);
+    expect(s.get("Cy Diaz")).toMatchObject({ games: 1, minutes: 20, starts: 0, goals: 0, timedGames: 2 });
   });
 });

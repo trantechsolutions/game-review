@@ -6,6 +6,8 @@
 //   private/data/roster.json          optional squad list with positions (coach-password key)
 //   private/data/lineups.json         optional starters and changes per game (coach-password key)
 //   private/.keeper-password          optional: seals the scorekeeper's squad list (scorekeeper-password key)
+//   private/data/schedule.json        optional team schedule from the manager (tools/manager/manager.ts schedule),
+//                                     sealed with the squad list so a new game is set up in one tap
 //   private/data/ollie/history.json   optional Ollie Sports game history (tools/ollie/pull.ts); players.json coach key
 //   private/clips/<slug>/<id>.mp4     highlight clips (tools/make_highlights.py)
 //   dist/app/                         the React app shell from `vite build`; holds no game content
@@ -143,6 +145,10 @@ if (existsSync(join(OLLIE, "history.json"))) {
   }
 }
 
+// The manager's schedule (opponents, venues) rides along with the squad list, under the same key.
+const SCHEDULE = join(DATA, "schedule.json");
+const schedule = existsSync(SCHEDULE) ? JSON.parse(readFileSync(SCHEDULE, "utf8")) : null;
+
 // The scorekeeper's squad list opens with the scorekeeper password only. Same derivation as
 // app/src/lib/keeperCrypto.ts; its file name comes from that key, so scorekeeper mode needs neither the
 // team password nor the manifest to find it.
@@ -158,7 +164,7 @@ if (keeperPassword && roster) {
   const keeperKeys = { key: rosterKey, ivKey: createHmac("sha256", rosterKey).update("dfc-film iv derivation").digest() };
   const keeperPath = "keeper/roster.json";
   const keeperFile = opaque(createHmac("sha256", rosterKey).update("dfc-film name derivation").digest(), keeperPath);
-  writeFileSync(join(OUT, keeperFile), seal(keeperKeys, keeperPath, Buffer.from(JSON.stringify({ us: site.us, players: roster.players }), "utf8")));
+  writeFileSync(join(OUT, keeperFile), seal(keeperKeys, keeperPath, Buffer.from(JSON.stringify({ us: site.us, players: roster.players, ...(schedule ? { schedule } : {}) }), "utf8")));
 } else if (!keeperPassword) console.log(`No ${relative(ROOT, KEEPER_PW_FILE)}: scorekeeper mode stays locked.`);
 
 // Game-list order: newest first; the app keeps this order for same-day games.
@@ -171,7 +177,7 @@ if (r2) {
 
 // Nothing readable about the team, games or players may appear in the public app files.
 const needles = new Set([site.us, ...games.flatMap(g => [g.opponent, g.slug, ...g.highlights.clips.map(c => c.id)]),
-  ...(roster?.players ?? []).map(p => p.name)]);
+  ...(roster?.players ?? []).map(p => p.name), ...(schedule ?? []).map(g => g.opponent).filter(o => o.length >= 3)]);
 const leaks = [];
 const walk = dir => readdirSync(dir, { withFileTypes: true }).flatMap(d => d.isDirectory() ? walk(join(dir, d.name)) : [join(dir, d.name)]);
 for (const file of walk(OUT).filter(f => !f.endsWith(".bin"))) {

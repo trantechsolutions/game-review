@@ -683,8 +683,18 @@ footer.foot b { color: var(--ink); }
 .kp-sync { font: 600 0.72rem/1 var(--body); padding: 6px 9px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--muted); white-space: nowrap; }
 .kp-sync.pending, .kp-sync.sending { color: var(--dfc-ink); border-color: var(--dfc); }
 .kp-sync.offline { color: var(--card); border-color: var(--card); }
-.kp-sync.error { color: var(--red); border-color: var(--red); }
+.kp-sync.error, .kp-sync.expired { color: var(--red); border-color: var(--red); }
 
+.kp-sched { margin-bottom: 14px; }
+.kp-sched-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; margin-top: 6px; }
+.kp-sched-btn {
+  display: grid; gap: 3px; text-align: left; padding: 10px 12px; border-radius: 10px;
+  border: 2px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; cursor: pointer;
+}
+.kp-sched-btn b { font-size: 1rem; }
+.kp-sched-btn .muted { font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kp-sched-btn.on { background: var(--dfc); border-color: var(--dfc); color: var(--on-accent); }
+.kp-sched-btn.on .muted, .kp-sched-btn.on .eyebrow { color: color-mix(in srgb, var(--on-accent) 75%, transparent); }
 .kp-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
 .kp-form label { display: grid; gap: 5px; font-size: 0.82rem; font-weight: 600; }
 .kp-form input, .kp-form select, .kp-clock-in {

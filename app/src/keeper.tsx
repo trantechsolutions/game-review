@@ -2,6 +2,10 @@
 // stat log. Every tap is saved on this device first and sent to Supabase, encrypted, whenever there is a
 // connection, so a dead spot at the field loses nothing and a second phone can pick the game up.
 // The stat-log functions (tools/keeper/setup.sql) only answer to the access key the password derives.
+// Opened from NOLA DFC Manager, the scorekeeper also has a token for their own account: entries then go
+// through keeper_*_as (nola-dfc-manager/sql/keeper_accounts_migration.sql), which records who sent them
+// and stops working when the account loses the scorekeeper or coach role. The password still works for a
+// volunteer without an account.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { KEEPER_KDF } from "./config";
 import { aesKey, b64, open, opaqueName, toB64 } from "./lib/crypto";
@@ -23,10 +27,13 @@ const loadKeys = (): KeeperKeys | null => {
   const k = read<{ a: string; e: string; r: string }>(KEYS);
   return k ? { accessKey: k.a, encRaw: b64(k.e), rosterRaw: b64(k.r) } : null;
 };
+/** The manager account's scorekeeper token, when the keys came from the manager. */
+const loadToken = () => read<{ u?: string }>(KEYS)?.u ?? null;
 
 export class BadKeeperPassword extends Error {}
 
-export type SyncState = "idle" | "sending" | "offline" | "error";
+/** "expired": the manager account's token no longer works (expired, or the role was taken away). */
+export type SyncState = "idle" | "sending" | "offline" | "error" | "expired";
 
 interface Log { entries: KeepEntry[]; sent: Set<string> }
 
@@ -70,6 +77,7 @@ interface Row { id: string; scope: string; data: string }
 
 export function KeeperProvider({ children }: { children: ReactNode }) {
   const [keys, setKeys] = useState<KeeperKeys | null>(loadKeys);
+  const [token, setToken] = useState<string | null>(loadToken);
   const [roster, setRoster] = useState<KeeperRoster | null>(() => (keys ? read<KeeperRoster>(ROSTER) : null));
   const [games, setGames] = useState<string[]>(() => read<string[]>(INDEX) ?? []);
   const [version, setVersion] = useState(0);
@@ -105,9 +113,14 @@ export function KeeperProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!keys) return;
     fetchRoster(keys).then(r => { setRoster(r); write(ROSTER, r); }, err => {
-      if (err instanceof BadKeeperPassword) { drop(KEYS); drop(ROSTER); setKeys(null); setRoster(null); }
+      if (err instanceof BadKeeperPassword) { drop(KEYS); drop(ROSTER); setKeys(null); setToken(null); setRoster(null); }
     });
   }, [keys]);
+
+  // The stat-log calls: as the manager account when there's a token, else with the password's access key.
+  const call = useCallback((fn: "append" | "list" | "forget", args: Record<string, unknown>) =>
+    token ? sb.rpc(`keeper_${fn}_as`, { p_token: token, ...args }) : sb.rpc(`keeper_${fn}`, { p_key: keys!.accessKey, ...args }), [token, keys]);
+  const expired = (code?: string) => !!token && code === "42501";
 
   const flush = useCallback(async () => {
     if (!keys || busy.current) return;
@@ -116,7 +129,7 @@ export function KeeperProvider({ children }: { children: ReactNode }) {
     if (forgotten.length && navigator.onLine) {
       const left: string[] = [];
       for (const slug of forgotten) {
-        const { error } = await sb.rpc("keeper_forget", { p_key: keys.accessKey, p_scope: await keeperScope(keys.encRaw, slug) });
+        const { error } = await call("forget", { p_scope: await keeperScope(keys.encRaw, slug) });
         if (error) left.push(slug);
       }
       if (left.length) write(FORGOT, left); else drop(FORGOT);
@@ -134,17 +147,18 @@ export function KeeperProvider({ children }: { children: ReactNode }) {
       for (let i = 0; i < todo.length; i += 200) {
         const batch = todo.slice(i, i + 200);
         const rows = await Promise.all(batch.map(async ({ slug, e }) => ({ id: e.id, scope: await keeperScope(keys.encRaw, slug), data: await sealEntry(keys.encRaw, e) })));
-        const { error } = await sb.rpc("keeper_append", { p_key: keys.accessKey, p_rows: rows });
-        if (error) throw new Error(error.message);
+        const { error } = await call("append", { p_rows: rows });
+        if (error) throw Object.assign(new Error(error.message), { code: error.code });
         for (const { slug, e } of batch) logOf(slug).sent.add(e.id);
         for (const slug of new Set(batch.map(b => b.slug))) save(slug, logOf(slug));
       }
       setSync({ state: "idle", pending: 0, error: "" });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      setSync({ state: navigator.onLine && !/fetch/i.test(msg) ? "error" : "offline", pending: pendingCount(), error: msg });
+      const state = expired((err as { code?: string }).code) ? "expired" : navigator.onLine && !/fetch/i.test(msg) ? "error" : "offline";
+      setSync({ state, pending: pendingCount(), error: msg });
     } finally { busy.current = false; }
-  }, [keys, logOf, pendingCount]);
+  }, [keys, logOf, pendingCount, call, expired]);
 
   // Retry whatever is waiting: when the connection comes back, and every 15 s.
   useEffect(() => {
@@ -158,8 +172,8 @@ export function KeeperProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     if (!keys || !navigator.onLine) return;
-    const { data, error } = await sb.rpc("keeper_list", { p_key: keys.accessKey, p_scope: null });
-    if (error) { setSync(s => ({ ...s, state: "error", error: error.message })); return; }
+    const { data, error } = await call("list", { p_scope: null });
+    if (error) { setSync(s => ({ ...s, state: expired(error.code) ? "expired" : "error", error: error.message })); return; }
     const byScope = new Map<string, KeepEntry[]>();
     for (const r of (data ?? []) as Row[]) {
       try {
@@ -181,7 +195,7 @@ export function KeeperProvider({ children }: { children: ReactNode }) {
       addGame(slug);
     }
     if (changed) setVersion(v => v + 1);
-  }, [keys, logOf, addGame]);
+  }, [keys, logOf, addGame, call, expired]);
 
   const signIn = useCallback(async (password: string) => {
     const k = await deriveKeeperKeys(password, KEEPER_KDF);
@@ -189,11 +203,12 @@ export function KeeperProvider({ children }: { children: ReactNode }) {
     write(KEYS, { a: k.accessKey, e: toB64(k.encRaw), r: toB64(k.rosterRaw) });
     write(ROSTER, r);
     setRoster(r);
+    setToken(null);
     setKeys(k);
   }, []);
 
   // Signing out keeps the logs on the device: anything not yet sent would otherwise be lost.
-  const signOut = useCallback(() => { drop(KEYS); drop(ROSTER); setKeys(null); setRoster(null); }, []);
+  const signOut = useCallback(() => { drop(KEYS); drop(ROSTER); setKeys(null); setToken(null); setRoster(null); }, []);
 
   const flushSoon = useRef<ReturnType<typeof setTimeout>>(undefined);
   const forget = useCallback((slug: string) => {

@@ -183,6 +183,7 @@ export const Roster = z.object({
     name: z.string().min(1),
     number: z.number().int().nonnegative().nullable().optional(),
     positions: z.array(z.enum(Object.keys(POSITIONS) as [string, ...string[]])),
+    managerId: z.string().uuid().optional(), // the player in NOLA DFC Manager (tools/manager/manager.ts roster)
   }).strict()),
 }).strict();
 export type Roster = z.infer<typeof Roster>;
@@ -210,9 +211,23 @@ export type Lineups = z.infer<typeof Lineups>;
 
 // The scorekeeper's squad list (built from roster.json without anything else), sealed with the
 // scorekeeper-password key. `us` is our short team name, which the public app code never holds.
+// A game in the team's schedule (NOLA DFC Manager; lib/schedule.ts). A tournament is one row for all its games.
+export const ScheduledGame = z.object({
+  eventId: z.string().uuid(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  time: z.string(),                 // kickoff "17:00", where the team plays
+  title: z.string(),                // as the calendar has it
+  opponent: z.string(),             // read from the title; "" when it can't tell
+  home: z.boolean().nullable(),     // false when the title says "@"; otherwise not known
+  location: z.string(),
+  tournament: z.boolean(),
+}).strict();
+export type ScheduledGame = z.infer<typeof ScheduledGame>;
+
 export const KeeperRoster = z.object({
   us: z.string(),
   players: Roster.shape.players,
+  schedule: z.array(ScheduledGame).optional(),
 }).strict();
 export type KeeperRoster = z.infer<typeof KeeperRoster>;
 
@@ -239,6 +254,7 @@ export const KeepSetup = z.object({
   stopClock: z.boolean().optional(),        // the clock counts down and stops for goals, cards and subs
   level: z.enum(["beginner", "advanced"]).optional(), // beginner: team stats only, no lineup
   start: Starters,
+  eventId: z.string().uuid().optional(),     // the manager's schedule entry it was set up from
 }).strict();
 export type KeepSetup = z.infer<typeof KeepSetup>;
 const Coord = z.number().min(0).max(100);

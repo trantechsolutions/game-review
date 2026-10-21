@@ -43,6 +43,7 @@ tools/e2e.mjs              browser test of a local build in both languages
 tools/notes/               coach-notes database setup and admin
 tools/keeper/              scorekeeper stat-log database setup, admin and import (keeper.ts pull)
 tools/ollie/pull.ts        pulls the Ollie Sports game history (sign in through the saved Ollie web app)
+tools/manager/manager.ts   NOLA DFC Manager: shared Supabase setup, migration, key link, roster pull
 tools/kdf.json             key-derivation salt and iterations (not secret)
 ```
 
@@ -172,6 +173,60 @@ To add or refresh it:
 5. Run `npm run build`, then commit and push. The history is encrypted with the team password; player stats name players, so they're encrypted with the coach password.
 
 `npm run validate` checks the history against its schema and that every library match points at a real game. Library games are matched by date, then by the same score or a shared opponent word.
+
+## NOLA DFC Manager
+
+This site and [NOLA DFC Manager](https://github.com/trantechsolutions/nola-dfc-manager) work together for the U13 Black team, on the manager's Supabase project:
+
+- **Open from the manager:** a **Game film** card opens this site already unlocked, using whatever the account's place on the team allows. For staff it's on the team overview; in the parent portal it's under the **About** card.
+  - Everyone on the team (staff, guardians of active players, scorekeepers) gets the games.
+  - Head and assistant coaches, team managers and club admins also get the coach area.
+  - The **Scorekeeper** role, assigned in the manager's Team Users like the other roles, adds the scorekeeper screen. It grants nothing else in the manager, so a parent with it keeps the parent portal. A scorekeeper with no player on the team sees the card on their empty "no players" screen.
+  - Nobody needs the passwords any more. They still work, and they're still what the keys come from.
+- **How the keys travel:** the manager passes them in the part of the link after `#`, which browsers never send to a server. This site stores them as if the password had been typed, then replaces the address (`app/src/lib/unlock.ts`). The keys sit in the manager's `film_sites` table, which only the `film_access()` function can read, and it hands each user only their share (`nola-dfc-manager/sql/game_film_migration.sql`).
+- **Roster:** the manager is the source of truth for who is on the team, their names and shirt numbers. Positions stay in `roster.json`. `npx tsx tools/manager/manager.ts roster` updates the roster:
+  - it links each player to their manager record;
+  - it adds new players, with empty positions to fill in;
+  - it renames players in `lineups.json` when the manager's spelling changed;
+  - it keeps players the manager no longer lists, because old games still name them.
+
+  `--dry-run` shows the changes without writing.
+- **Schedule into the scorekeeper:** `npx tsx tools/manager/manager.ts schedule` writes the team's games from the manager's schedule to `private/data/schedule.json` (date, kickoff, opponent read from the title, venue, and away when the title says "@"). The next build seals it into the scorekeeper's squad file, so a new game is set up by tapping "Today · vs …". The breakdown agent starts new game files from it too.
+- **Breakdowns into the manager's schedule:** after `npm run build`, `npx tsx tools/manager/manager.ts games` matches each game file to its game in the manager's schedule (same day and opponent, else the only game that day, else the tournament that weekend) and lists it in the manager's `film_games` table. The manager's schedule then shows **Match report** and **Highlights** on those games, opening this site already unlocked on that page. `--dry-run` shows the matches without writing. It needs `nola-dfc-manager/sql/game_film_games_migration.sql` run once.
+
+- **Season stats into the manager:** `npx tsx tools/manager/manager.ts stats` works out each player's season (the manager's July–June seasons) and writes it to the manager's `player_season_stats`:
+  - minutes, starts and positions, from the lineups, else the scorekeeper's lineup, else Ollie's playing time;
+  - goals, assists, shots and cards, from the scorekeeper's logs, else Ollie (the breakdowns name positions, not players).
+
+  A game recorded in more than one place counts once, from its best source. The manager shows the numbers on the player profile, beside the season evaluations, and to the player's own parents. `--dry-run` prints them without writing. Needs `nola-dfc-manager/sql/player_season_stats_migration.sql` run once, and `roster` run first so players have their manager ids.
+- **Scorekeeping under real accounts:** opened from the manager's **Keep stats**, the scorekeeper screen gets a token for the signed-in account (30 days). Its entries are then sent as that account, recorded with the team and who sent them, and stop going through if the account loses its coach or scorekeeper role ("Open Keep stats from the manager again"). The scorekeeper password still works for a volunteer without an account. Needs `nola-dfc-manager/sql/keeper_accounts_migration.sql` run once.
+
+`private/.manager.json` (never committed):
+```json
+{
+  "url": "https://<manager project>.supabase.co",
+  "serviceRoleKey": "…",
+  "teamId": "<the U13 Black team's id>",
+  "siteUrl": "https://trantechsolutions.github.io/game-review/",
+  "timeZone": "America/Chicago"
+}
+```
+`timeZone` is optional (that's the default): it's where the team plays, for schedule dates and kickoffs.
+The service_role key (Supabase → Project settings → API) can read and write everything in the manager's database. Keep it in this file only.
+
+Moving to the manager's Supabase project (once):
+
+1. In the manager project's SQL editor, run `nola-dfc-manager/sql/game_film_migration.sql`.
+2. Run `npx tsx tools/manager/manager.ts teams` and put U13 Black's id in `teamId`.
+3. Run `npx tsx tools/manager/manager.ts setup-sql`, then paste `private/film-setup.sql` (coach notes and scorekeeper stat logs) into the same SQL editor.
+4. Run `npx tsx tools/manager/manager.ts migrate`. It copies the coach notes and stat logs from the project `app/src/config.ts` still points at.
+5. Switch `SUPABASE_URL` and `SUPABASE_ANON_KEY` in `app/src/config.ts` to the manager project's (Project settings → API; the anon key is public).
+6. Run `npx tsx tools/manager/manager.ts link`, then `check`, then `roster`.
+7. Run `npm run build`, commit and push both repos.
+
+After changing any of the three passwords, run `link` again, so the manager hands out the new keys.
+
+Each time games are added: `schedule` before `npm run build` (so the scorekeeper has the latest schedule), then `games` and `stats` after it (so the manager's schedule links to the new breakdowns and the player numbers are current).
 
 ## Clip storage (Cloudflare R2)
 

@@ -14,8 +14,9 @@ import {
   type Actor, type Ev, type EvFields, type FeedItem, type KeepState, type Side,
 } from "../lib/keeplog";
 import { candidates, POSITIONS, type RosterPlayer } from "../lib/positions";
+import { upcoming } from "../lib/schedule";
 import { sec } from "../lib/time";
-import type { KeepEntry, KeepSetup, KeepType } from "../schema";
+import type { KeepEntry, KeepSetup, KeepType, ScheduledGame } from "../schema";
 
 // ---------- Routing inside #/keep ----------
 
@@ -122,6 +123,7 @@ function SyncBadge() {
   const label = sync.state === "sending" ? t("kp_syncSending")
     : sync.state === "offline" ? t("kp_syncOffline", { n: sync.pending })
     : sync.state === "error" ? t("kp_syncError", { n: sync.pending })
+    : sync.state === "expired" ? t("kp_syncExpired", { n: sync.pending })
     : sync.pending ? t("kp_syncWaiting", { n: sync.pending }) : t("kp_syncOk");
   return <span className={`kp-sync ${sync.state}${sync.pending ? " pending" : ""}`} title={sync.error || undefined} role="status">{label}</span>;
 }
@@ -220,9 +222,10 @@ function today() {
 
 function Setup({ slug }: { slug: string | null }) {
   const k = useKeeper();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const players = k.roster!.players;
   const existing = slug ? replay(k.entries(slug)).setup : null;
+  const scheduled = useMemo(() => (slug ? [] : upcoming(k.roster!.schedule ?? [], today())), [slug, k.roster]);
   const previous = useMemo(() => k.games.filter(g => g !== slug).map(g => replay(k.entries(g)).setup).find(Boolean) ?? null, [k.games, slug, k]);
   const seed = existing ?? previous;
 
@@ -231,6 +234,12 @@ function Setup({ slug }: { slug: string | null }) {
   const [date, setDate] = useState(existing?.date ?? today());
   const [time, setTime] = useState(existing?.time ?? "");
   const [home, setHome] = useState<"home" | "away" | "unknown">(existing ? (existing.home == null ? "unknown" : existing.home ? "home" : "away") : "unknown");
+  const [eventId, setEventId] = useState(existing?.eventId);
+  const fromSchedule = (g: ScheduledGame) => {
+    setOpponent(g.opponent); setDate(g.date); setTime(g.time);
+    setHome(g.home == null ? "unknown" : g.home ? "home" : "away");
+    setEventId(g.eventId); setErr("");
+  };
   const [format, setFormat] = useState(seed?.format ?? 11);
   const [level, setLevel] = useState<"beginner" | "advanced">(seed?.level ?? "advanced");
   const [halfMin, setHalfMin] = useState(seed?.halfMin ?? 30);
@@ -297,7 +306,7 @@ function Setup({ slug }: { slug: string | null }) {
     if (!slug && k.games.includes(id)) { let n = 2; while (k.games.includes(`${id}-${n}`)) n++; id = `${id}-${n}`; }
     const setup: KeepSetup = {
       slug: id, date, time, opponent: opponent.trim(), home: home === "unknown" ? null : home === "home",
-      format, formation, side, halfMin, stopClock, level, start,
+      format, formation, side, halfMin, stopClock, level, start, ...(eventId ? { eventId } : {}),
     };
     k.append(id, { id: newId(), at: Date.now(), k: "setup", setup });
     go(`/g/${encodeURIComponent(id)}`);
@@ -320,6 +329,21 @@ function Setup({ slug }: { slug: string | null }) {
         {nextBtn}
       </header>
       <p className="eyebrow">{t("kp_stepOf", { n: at + 1, of: steps.length })}</p>
+
+      {step === "details" && scheduled.length ? (
+        <section className="kp-sched" aria-label={t("kp_fromSchedule")}>
+          <p className="eyebrow">{t("kp_fromSchedule")} <span className="muted">· {t("kp_scheduleHint")}</span></p>
+          <div className="kp-sched-list">
+            {scheduled.map(g => (
+              <button key={g.eventId} type="button" className={`kp-sched-btn${eventId === g.eventId ? " on" : ""}`} aria-pressed={eventId === g.eventId} onClick={() => fromSchedule(g)}>
+                <span className="eyebrow">{g.date === today() ? t("kp_today") : formatDate(g.date, locale, "short")}{g.time ? ` · ${g.time}` : ""}{g.home === false ? ` · ${t("awayShort")}` : g.home ? ` · ${t("homeShort")}` : ""}</span>
+                <b>{g.opponent ? `${t("vs")} ${g.opponent}` : g.title}</b>
+                {g.location ? <span className="muted">{g.location}</span> : null}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {step === "details" ? (
         <section className="kp-form">
