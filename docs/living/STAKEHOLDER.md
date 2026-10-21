@@ -2,6 +2,15 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-20 — Scorekeeper mode, lineups and season overview (f0146ce..f0146ce)
+
+- There is now a scorekeeper screen for keeping stats live at the game, from a phone held sideways. It has its own password and opens nothing else on the site.
+- The scorekeeper follows the ball: tap the next player to get it for a pass, or the other team when they win it. Swipe a player for a shot, cross or clearance. There are buttons for the ball going out and for fouls and cards. Shots are marked on a picture of the goal, and corners, goal kicks and throw-ins on the touchline or goal line where the ball went out.
+- Stats can also be called out loud: "9 to 17, shot saved", "foul by them", "sub Adam for Jayden", "Dee moves to striker".
+- Substitutions and position changes can be made from a lineup screen, by dragging, or by voice.
+- Everything is saved on the phone and sent securely once there is signal, so a lost connection at the field loses nothing. Test games can be deleted.
+- For coaches: each game can now carry its lineup, there is a squad page with every player's minutes and starts, and a season overview page.
+
 ## 2026-10-19 — 18 October game (e65afa1..e65afa1)
 
 - The 0–5 away loss from 18 October is now on the site, in English and Spanish, with all five pages and eight highlight clips (all five goals plus three examples of playing out from the back).

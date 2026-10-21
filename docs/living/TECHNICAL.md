@@ -2,6 +2,23 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-20 — Scorekeeper mode, lineups and season overview (f0146ce..f0146ce)
+
+- **New scorekeeper app** at `#/keep`:
+  - `app/src/pages/Keep.tsx` (setup wizard, live screen, flows)
+  - `components/KeepPitch.tsx` (pitch, drag/tap/long-press)
+  - `components/KeepPickers.tsx` (shot spot, goal mouth, line picker, formation thumbnails)
+  - `components/VoiceBox.tsx` (dictation box and hold-to-talk fallback)
+  - `keeper.tsx` (keys, roster, local log, Supabase sync, delete queue)
+  - `supabase.ts` (shared client, now also used by `notes.tsx`)
+- **Engine** `lib/keeplog.ts`: append-only log replay, ball/possession state, `tapEvent`, formations (`SHAPES`), stats including possession by clock time, position-only descriptions, and the `toRaw` export with a shot map. `lib/voice.ts` parses dictated lines into commands and runs them against the log. `lib/keeperCrypto.ts` derives the scorekeeper keys.
+- **Schema** (`schema.ts`): `KeeperRoster`, `KeepSetup` (formation, side, stop clock, level), `KeepEntry` (setup, clock, end, ev, sub, move, void). The ev entry carries `to`, `cross`, `via`, `result`, `goal`, `assist` and `og`. `EVENT_TYPES` gains Cross, Clearance, Handball, Illegal throw-in, Goal kick, Penalty and Offside, with Spanish labels and play-by-play filters.
+- **Build** (`tools/build.mjs`): with `private/.keeper-password`, seals the scorekeeper squad list under a key-derived name. New `tools/keeper-kdf.json` holds the KDF salt (not secret).
+- **Database** (`tools/keeper/setup.sql`): `keeper_log` and `keeper_key` tables, closed to the API, reached only through key-checked functions: `keeper_check`, `keeper_append` (idempotent by id), `keeper_list`, `keeper_set_key`, `keeper_delete_test` and `keeper_forget`. `tools/keeper/keeper.ts` provides `setup-sql`, `check`, `games`, `pull <slug> [--as] [--force]`, `forget <slug>` and `rotate`.
+- **Also in this push:** roster and lineups (`lib/lineup.ts`, `squad.tsx`, `components/LineupPitch.tsx`, `pages/Players.tsx`), season overview (`lib/season.ts`, `pages/Season.tsx`), name tooltips (`lib/naming.ts`), and validator checks for the roster and lineups.
+- **Tests:** vitest 53/53, covering log replay, possession taps, restarts, formations, exports, scorekeeper crypto and voice parsing and running. `tools/e2e.mjs` now covers the full scorekeeper flow on a 844×390 landscape viewport with Supabase blocked: wizard, kickoff, passes, opponent passes, My Team, a shot with assist, out with taker and type, a foul, a wide shot to a goal kick, the lineup sheet swap and sub, voice lines, reload and delete. Build leak check is clean.
+- **Rollback:** revert f0146ce and run `npm run build`. The Supabase `keeper_*` objects can stay; they hold only ciphertext.
+
 ## 2026-10-19 — 18 October game (e65afa1..e65afa1)
 
 - New private game file (slug `2026-10-18-brsc-black`, distinct from `2026-10-11-brsc`), 32 events, 8 clips, plus a goal-kick/GK-possession table in the match report.

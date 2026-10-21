@@ -2,6 +2,30 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-20 — Scorekeeper mode, lineups and season overview (f0146ce..f0146ce)
+
+**Delivered.**
+- **Scorekeeper mode**, to replace Ollie for live stats. It runs in the existing site, landscape only, with its own password. It covers possession by tap (passes, ball wins, turnovers), swipe actions (shot, cross, clearance), shot location and placement on goal, out-of-bounds by line with taker and restart type, infractions and cards, subs, swaps and position changes, stop-clock mode and added time, and beginner (team-only) or advanced (per-player) levels.
+- **Voice logging** through Wispr Flow dictation, with a test-only mode and a copyable history for tuning the phrases.
+- **Coach tools:** roster, per-game lineups, a squad minutes page and a season overview.
+
+**Decisions.**
+- **Separate scorekeeper password**, so a parent can keep stats without access to the coach area.
+- **Offline-first storage:** logs are saved on the phone first and synced encrypted to the existing Supabase project; the database never sees names or games.
+- **Possession-chain model** copied from Ollie, after the coach's screenshots; this replaced the first drag-to-pitch version the same day.
+- **Landscape only**, at the coach's request.
+- **Voice reads dictated text** rather than recording audio itself, so it works with Wispr Flow.
+- **Not published:** a local copy of Ollie's web app used for reference (`docs/reference/`) is kept off the repository.
+
+**Risk.**
+- Voice accuracy at a noisy field is untested. The coach is running field tests over the next few days.
+- Supabase's free plan pauses after a week idle. Logs stay on the phone until it's unpaused.
+
+**Open.**
+- The latest Supabase setup script (adds game deletion) still needs to be pasted into Supabase.
+- Three test games from development are in the stat log and can be deleted once that script is in.
+- Voice commands are English only.
+
 ## 2026-10-19 — 18 October game (e65afa1..e65afa1)
 
 **Delivered.** One new game: full play-by-play, match report, coaches' breakdown, unit reviews and 8 highlight clips (about 103 MB, stored in R2). The site now holds 10 games; R2 use is about 750 MB of 10 GB.
