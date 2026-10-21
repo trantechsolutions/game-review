@@ -2,6 +2,28 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-20 — Ollie game history and a clearer game layout (b9ef61f..b9ef61f)
+
+- **Ollie history:**
+  - `tools/ollie/pull.ts` serves `docs/reference/ollie-web`, waits for the Firebase user in IndexedDB, and reads via Firestore REST: `team` by `accounts.<uid>.exists`, `soccerGame` and `soccerStatSnapshot` by `teamId`, `calendarEntry` via batchGet, and `player` by `teamId`.
+  - It translates short stat codes to `SoccerStatKeysObj` names, parsing `e.<name>="<code>"` from the saved bundle.
+  - The score comes from `officiallyEndedGameSummaryStats.score`, the venue from `gameVenue` and names from `virtualAthleteAccount`.
+  - It writes `private/data/ollie/{history,players,raw}.json`. `--from-raw` rebuilds without signing in.
+- **Ollie helpers:** `app/src/lib/ollie.ts` holds the stat labels, `fmtStat`, `seasonOf`, `matchInApp`, `summarize` and `resultOf`.
+- **Ollie tab and build:**
+  - `pages/History.tsx` is the tab.
+  - `schema.ts` adds `OllieGame`, `OllieHistory`, `OlliePlayers` and the manifest's `ollieFile` and `olliePlayersFile`.
+  - `site.tsx` adds `loadOllie` and `loadOlliePlayers` (coach key).
+  - `build.mjs` seals `ollie/history.json` (team key) and `coaches/ollie-players.json` (coach key).
+  - `validate.ts` checks both files and their library matches.
+- **Game template:**
+  - `components/GameHeader.tsx` is the shared header, with prev/next and a sticky `.gtabs` bar.
+  - `PAGES` is reordered with `report` as the default, and the app bar shows site links only.
+  - Each page's hero is replaced by `PageLead` (in `shared.tsx`), and `nav.toc` is sticky under the tabs, with a 104px scroll margin.
+- **Routing:** `/` redirects to `/season`, the game list moves to `/library`, and unknown routes go to `/season`. `GameList.tsx` gets icon buttons under the date.
+- **Tests:** vitest 56/56, adding `matchInApp`, `seasonOf`, `fmtStat` and `summarize`. `tools/e2e.mjs` lands on the season page, uses the library tab, finds game tabs in `.gtabs`, checks that section links land below the sticky bars, and opens the game history. Build leak check is clean.
+- **Rollback:** revert b9ef61f and run `npm run build`. The history files under `private/data/ollie/` can stay; without the code they aren't published.
+
 ## 2026-10-20 — Scorekeeper mode, lineups and season overview (f0146ce..f0146ce)
 
 - **New scorekeeper app** at `#/keep`:

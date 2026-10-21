@@ -2,6 +2,13 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-20 — Ollie game history and a clearer game layout (b9ef61f..b9ef61f)
+
+- The site now opens on the season overview. The list of reviewed games is its own tab, "Game film library".
+- New **Game history** tab: 108 earlier games from Ollie Sports, back to September 2023, that the library doesn't already cover. Each shows the result, possession, shots and shots on goal. A record panel (wins, draws, losses, goals, home and away) updates as you filter by season or opponent. Tapping a game shows its full numbers by half. Coaches also see each player's numbers.
+- Every game's pages now share one clear header (score, date, scorers, and the games before and after) with tabs that stay at the top. A game opens on the match report.
+- In the library, each game has a play button for highlights and a paper button for the match report, right under the date.
+
 ## 2026-10-20 — Scorekeeper mode, lineups and season overview (f0146ce..f0146ce)
 
 - There is now a scorekeeper screen for keeping stats live at the game, from a phone held sideways. It has its own password and opens nothing else on the site.

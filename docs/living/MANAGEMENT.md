@@ -2,6 +2,23 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-20 — Ollie game history and a clearer game layout (b9ef61f..b9ef61f)
+
+**Delivered.**
+- **Ollie Sports history:** 118 games pulled from the team's Ollie account; 10 match library games and 108 are shown. It includes a filtered record panel and per-half team stats, with player stats for coaches only.
+- **Navigation:** the season overview is the home page, and the game list is a "Game film library" tab.
+- **Game layout:** one shared header and tab bar across all five game pages, opening on the report.
+- **Library cards:** reorganised, with highlights and report as icon buttons under the date.
+
+**Decisions.**
+- **How the history is pulled:** the coach signs in to Ollie through the locally saved Ollie web app, which is not published. The tool reads Ollie's database with that session and stores the result only on the coach's PC until the build encrypts it. Sign-in details are never saved.
+- **Matching library games:** by date, then score or opponent name.
+- **Layout:** shared header plus tabs, with the report first, chosen by the coach over a sidebar layout and the old tab order.
+
+**Risk.** The pull depends on Ollie's internal data layout, read from their app's code, which they could change without notice. If they do, a re-pull would fail loudly rather than publish wrong numbers, and the last good history stays published.
+
+**Open.** The history is a snapshot dated 20 October 2026, refreshed by re-running the pull. It doesn't yet feed the season overview's totals.
+
 ## 2026-10-20 — Scorekeeper mode, lineups and season overview (f0146ce..f0146ce)
 
 **Delivered.**
