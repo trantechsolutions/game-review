@@ -3,6 +3,9 @@
 //
 //   private/data/site.json            team name (encrypted into the manifest)
 //   private/data/games/<slug>.json    one file per game (app/src/schema.ts), English and Spanish
+//   private/data/roster.json          optional squad list with positions (coach-password key)
+//   private/data/lineups.json         optional starters and changes per game (coach-password key)
+//   private/.keeper-password          optional: seals the scorekeeper's squad list (scorekeeper-password key)
 //   private/clips/<slug>/<id>.mp4     highlight clips (tools/make_highlights.py)
 //   dist/app/                         the React app shell from `vite build`; holds no game content
 //
@@ -110,6 +113,39 @@ for (const g of games) {
   writeFileSync(join(OUT, coachFile), seal(coachKeys, coachPath, Buffer.from(JSON.stringify({ coaches }), "utf8")));
   manifest.games.push({ slug: g.slug, date: g.date, time: g.time, opponent: g.opponent, us: g.score.us, them: g.score.them, context: g.listContext, file: name, coachFile });
 }
+// The roster names players, so like the breakdown it opens only with the coach password.
+const ROSTER = join(DATA, "roster.json");
+const roster = existsSync(ROSTER) ? JSON.parse(readFileSync(ROSTER, "utf8")) : null;
+if (roster) {
+  const rosterPath = "coaches/roster.json";
+  manifest.rosterFile = opaque(keys.nameKey, rosterPath);
+  writeFileSync(join(OUT, manifest.rosterFile), seal(coachKeys, rosterPath, Buffer.from(JSON.stringify(roster), "utf8")));
+}
+// Lineups name players too: coach password only.
+const LINEUPS = join(DATA, "lineups.json");
+if (existsSync(LINEUPS)) {
+  const lineupsPath = "coaches/lineups.json";
+  manifest.lineupsFile = opaque(keys.nameKey, lineupsPath);
+  writeFileSync(join(OUT, manifest.lineupsFile), seal(coachKeys, lineupsPath, Buffer.from(readFileSync(LINEUPS))));
+}
+// The scorekeeper's squad list opens with the scorekeeper password only. Same derivation as
+// app/src/lib/keeperCrypto.ts; its file name comes from that key, so scorekeeper mode needs neither the
+// team password nor the manifest to find it.
+const KEEPER_PW_FILE = join(ROOT, "private", ".keeper-password");
+const keeperPassword = (process.env.KEEPER_PASSWORD
+  || (existsSync(KEEPER_PW_FILE) ? readFileSync(KEEPER_PW_FILE, "utf8") : "")).replace(/^﻿/, "").trim();
+if (keeperPassword && roster) {
+  if (keeperPassword === password || keeperPassword === coachPassword) fail("The scorekeeper password must differ from the team and coach passwords.");
+  if (keeperPassword.length < 12) console.warn("warning: the scorekeeper password is shorter than 12 characters.");
+  const KEEPER_KDF = JSON.parse(readFileSync(join(ROOT, "tools", "keeper-kdf.json"), "utf8"));
+  const keeperMaster = pbkdf2Sync(keeperPassword, Buffer.from(KEEPER_KDF.salt, "base64"), KEEPER_KDF.iterations, 32, "sha256");
+  const rosterKey = createHmac("sha256", keeperMaster).update("dfc-keeper roster").digest();
+  const keeperKeys = { key: rosterKey, ivKey: createHmac("sha256", rosterKey).update("dfc-film iv derivation").digest() };
+  const keeperPath = "keeper/roster.json";
+  const keeperFile = opaque(createHmac("sha256", rosterKey).update("dfc-film name derivation").digest(), keeperPath);
+  writeFileSync(join(OUT, keeperFile), seal(keeperKeys, keeperPath, Buffer.from(JSON.stringify({ us: site.us, players: roster.players }), "utf8")));
+} else if (!keeperPassword) console.log(`No ${relative(ROOT, KEEPER_PW_FILE)}: scorekeeper mode stays locked.`);
+
 // Game-list order: newest first; the app keeps this order for same-day games.
 manifest.games.sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time));
 put("manifest.json", Buffer.from(JSON.stringify(manifest), "utf8"));
@@ -119,7 +155,8 @@ if (r2) {
 }
 
 // Nothing readable about the team, games or players may appear in the public app files.
-const needles = new Set([site.us, ...games.flatMap(g => [g.opponent, g.slug, ...g.highlights.clips.map(c => c.id)])]);
+const needles = new Set([site.us, ...games.flatMap(g => [g.opponent, g.slug, ...g.highlights.clips.map(c => c.id)]),
+  ...(roster?.players ?? []).map(p => p.name)]);
 const leaks = [];
 const walk = dir => readdirSync(dir, { withFileTypes: true }).flatMap(d => d.isDirectory() ? walk(join(dir, d.name)) : [join(dir, d.name)]);
 for (const file of walk(OUT).filter(f => !f.endsWith(".bin"))) {

@@ -1,13 +1,17 @@
 // Unlocks the site with the team password and loads the encrypted manifest, games and clips.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { aesKey, b64, keyStore, open, opaqueName, pbkdf2, readKdf, type Bytes } from "./lib/crypto";
-import { CoachContent, Manifest, PublicGame, type Game } from "./schema";
+import { CoachContent, Lineups, Manifest, PublicGame, Roster, type Game } from "./schema";
 
 interface Site {
   manifest: Manifest;
   loadGame: (slug: string) => Promise<PublicGame>;
   /** The coaches' breakdown, opened with the coach-password key. */
   loadCoaches: (slug: string, contentKey: Bytes) => Promise<Game["coaches"]>;
+  /** The squad with positions, opened with the coach-password key; null when none is published. */
+  loadRoster: (contentKey: Bytes) => Promise<Roster | null>;
+  /** Starters and changes per game, opened with the coach-password key; null when none is published. */
+  loadLineups: (contentKey: Bytes) => Promise<Lineups | null>;
   loadClip: (slug: string, id: string, onStage?: (s: "fetch" | "decrypt") => void) => Promise<string>;
   lock: () => void;
 }
@@ -82,6 +86,8 @@ export function SiteContext({ keyObj, manifest, children }: { keyObj: CryptoKey;
   const games = useRef(new Map<string, Promise<PublicGame>>());
   const coaches = useRef(new Map<string, Promise<Game["coaches"]>>());
   const clips = useRef(new Map<string, string>());
+  const roster = useRef<Promise<Roster | null> | null>(null);
+  const lineups = useRef<Promise<Lineups | null> | null>(null);
 
   const value = useMemo<Site>(() => ({
     manifest,
@@ -106,6 +112,24 @@ export function SiteContext({ keyObj, manifest, children }: { keyObj: CryptoKey;
         coaches.current.set(slug, p);
       }
       return p;
+    },
+    loadRoster: contentKey => {
+      if (!manifest.rosterFile) return Promise.resolve(null);
+      if (!roster.current) {
+        const p = aesKey(contentKey).then(k => fetchSealed(k, manifest.rosterFile!)).then(u => Roster.parse(json(u)));
+        p.catch(() => { roster.current = null; });
+        roster.current = p;
+      }
+      return roster.current;
+    },
+    loadLineups: contentKey => {
+      if (!manifest.lineupsFile) return Promise.resolve(null);
+      if (!lineups.current) {
+        const p = aesKey(contentKey).then(k => fetchSealed(k, manifest.lineupsFile!)).then(u => Lineups.parse(json(u)));
+        p.catch(() => { lineups.current = null; });
+        lineups.current = p;
+      }
+      return lineups.current;
     },
     loadClip: async (slug, id, onStage) => {
       const k = `${slug}/${id}`;

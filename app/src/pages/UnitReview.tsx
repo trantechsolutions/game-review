@@ -50,11 +50,11 @@ export function UnitReview({ game: g }: { game: Game }) {
               <div className="pn">
                 <div className="col plus">
                   <h3>{t("wentWell")}</h3>
-                  <ul>{u.positives.map((p, i) => <li key={i}><T t={p.text} /><Evs ev={p.ev} /></li>)}</ul>
+                  <ul>{u.positives.map((p, i) => <li key={i}><span><T t={p.text} /></span><Evs ev={p.ev} /></li>)}</ul>
                 </div>
                 <div className="col minus">
                   <h3>{t("wentWrong")}</h3>
-                  <ul>{u.negatives.map((p, i) => <li key={i}><T t={p.text} /><Evs ev={p.ev} /></li>)}</ul>
+                  <ul>{u.negatives.map((p, i) => <li key={i}><span><T t={p.text} /></span><Evs ev={p.ev} /></li>)}</ul>
                 </div>
               </div>
 

@@ -1,17 +1,15 @@
 // Coach notes: unlock with the coach password, then read and write encrypted notes in Supabase.
 // There are no accounts. The password derives an encryption key and an access key; the notes
 // functions in the database (tools/notes/setup.sql) only answer to the access key.
-import { createClient } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { NOTES_KDF, SUPABASE_ANON_KEY, SUPABASE_URL } from "./config";
+import { NOTES_KDF } from "./config";
 import { b64, toB64, type Bytes } from "./lib/crypto";
 import { deriveNotesKeys, openNote, scopeFor, sealNote, type NoteBody } from "./lib/notesCrypto";
+import { sb } from "./supabase";
 
 const STORE = "dfc-notes-keys";
 
 export interface Note extends NoteBody { id: string; updatedAt: string }
-
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
 interface Keys { accessKey: string; encRaw: Bytes; contentRaw: Bytes }
 

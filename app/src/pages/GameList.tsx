@@ -34,6 +34,7 @@ export function GameList() {
             <span><b>{games.length}</b> {t("gamesReviewed")}</span>
             <span>{t("record")} <b>{w}-{d}-{l}</b></span>
             <span>{t("goalsFor")} <b>{gf}–{ga}</b></span>
+            <Link className="season-link" to="/season">{t("seasonOverview")} →</Link>
           </div>
         </div>
       </header>

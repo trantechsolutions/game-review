@@ -3,10 +3,12 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Game, Text } from "../app/src/schema";
+import { halfLengths, lineupFor, playLineup, type HalfLengths } from "../app/src/lib/lineup";
+import { Game, Lineups, Roster, Text } from "../app/src/schema";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const DIR = join(process.env.DFC_DATA || join(ROOT, "private", "data"), "games");
+const DATA = process.env.DFC_DATA || join(ROOT, "private", "data");
+const DIR = join(DATA, "games");
 const MAX_CLIP = 95 * 1024 * 1024;
 
 export function check(raw: unknown, clipsDir?: string): string[] {
@@ -72,6 +74,41 @@ export function check(raw: unknown, clipsDir?: string): string[] {
   return errs;
 }
 
+/** The roster: schema, and no two players sharing a name or a shirt number. */
+export function checkRoster(raw: unknown): string[] {
+  const parsed = Roster.safeParse(raw);
+  if (!parsed.success) return parsed.error.issues.map(i => `${i.path.join(".")}: ${i.message}`);
+  const errs: string[] = [], names = new Set<string>(), numbers = new Set<number>();
+  for (const p of parsed.data.players) {
+    if (names.has(p.name)) errs.push(`players: duplicate name ${p.name}`);
+    names.add(p.name);
+    if (p.number != null) {
+      if (numbers.has(p.number)) errs.push(`players: duplicate number ${p.number}`);
+      numbers.add(p.number);
+    }
+  }
+  return errs;
+}
+
+/** The lineups: schema, known games, roster names, and a timeline that replays cleanly. */
+export function checkLineups(raw: unknown, rosterNames: Set<string>, games: Map<string, HalfLengths>): string[] {
+  const parsed = Lineups.safeParse(raw);
+  if (!parsed.success) return parsed.error.issues.map(i => `${i.path.join(".")}: ${i.message}`);
+  const errs: string[] = [];
+  for (const s of parsed.data.default?.start ?? []) if (!rosterNames.has(s.player)) errs.push(`default: ${s.player} is not in the roster`);
+  for (const slug of Object.keys(parsed.data.games)) if (!games.has(slug)) errs.push(`${slug}: no such game`);
+  // Every game is replayed, including those that fall back on the default starters.
+  for (const [slug, len] of games) {
+    const r = lineupFor(parsed.data, slug);
+    if (!r) continue;
+    const l = r.lineup;
+    const names = [...l.start.map(s => s.player), ...l.changes.flatMap(c => ("off" in c ? [c.off, c.on] : [c.player]))];
+    for (const n of new Set(names)) if (!rosterNames.has(n)) errs.push(`${slug}: ${n} is not in the roster`);
+    errs.push(...playLineup(l, len).errors.map(e => `${slug}: ${e}`));
+  }
+  return errs;
+}
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   let bad = 0;
   const files = existsSync(DIR) ? readdirSync(DIR).filter(f => f.endsWith(".json")) : [];
@@ -82,6 +119,24 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     if (raw.slug !== f.replace(/\.json$/, "")) errs.push(`slug "${raw.slug}" does not match the file name`);
     if (errs.length) { bad++; console.error(`✗ ${f}\n  ${errs.slice(0, 40).join("\n  ")}${errs.length > 40 ? `\n  …and ${errs.length - 40} more` : ""}`); }
     else console.log(`✓ ${f}`);
+  }
+  const rosterFile = join(DATA, "roster.json");
+  const roster = existsSync(rosterFile) ? JSON.parse(readFileSync(rosterFile, "utf8")) : null;
+  if (roster) {
+    const errs = checkRoster(roster);
+    if (errs.length) { bad++; console.error(`✗ roster.json\n  ${errs.join("\n  ")}`); }
+    else console.log("✓ roster.json");
+  }
+  const lineupsFile = join(DATA, "lineups.json");
+  if (existsSync(lineupsFile)) {
+    const names = new Set<string>((roster?.players ?? []).map((p: { name: string }) => p.name));
+    const lens = new Map(files.map(f => {
+      const g = JSON.parse(readFileSync(join(DIR, f), "utf8"));
+      return [g.slug as string, halfLengths(g)];
+    }));
+    const errs = checkLineups(JSON.parse(readFileSync(lineupsFile, "utf8")), names, lens);
+    if (errs.length) { bad++; console.error(`✗ lineups.json\n  ${errs.join("\n  ")}`); }
+    else console.log("✓ lineups.json");
   }
   process.exit(bad ? 1 : 0);
 }

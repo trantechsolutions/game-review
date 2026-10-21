@@ -5,6 +5,7 @@ import { useI18n, type Key } from "../i18n";
 import { gameMinute, mmss, videoSec, workingClip } from "../lib/time";
 import type { PublicGame as Game, GameEvent } from "../schema";
 import { useSite } from "../site";
+import { NamerContext, useNamed, useNamer } from "../squad";
 import { eventLabel, useDateLine } from "./shared";
 
 type Kind = "all" | "goal" | "shot" | "to" | "win" | "build" | "set";
@@ -14,8 +15,10 @@ const kinds = (e: GameEvent): string[] => {
     case "Shot": return ["shot"];
     case "Turnover": return ["to"];
     case "Ball win": case "Save": return ["win"];
-    case "Pass": case "Run": return ["build"];
-    case "Corner": case "Throw-in": case "Yellow": case "Red": case "Foul": case "Free kick": case "Sub": return ["set"];
+    case "Pass": case "Run": case "Cross": return ["build"];
+    case "Clearance": return ["win"];
+    case "Corner": case "Throw-in": case "Yellow": case "Red": case "Foul": case "Free kick": case "Sub":
+    case "Goal kick": case "Penalty": case "Offside": case "Handball": case "Illegal throw-in": return ["set"];
     default: return ["whistle"];
   }
 };
@@ -43,8 +46,10 @@ export function PlayByPlay({ game: g }: { game: Game }) {
   const shown = g.events.filter(e => e.t !== "N" && visible(e)).length;
 
   const dateLine = useDateLine(g);
+  const namer = useNamer(g);
 
   return (
+    <NamerContext.Provider value={namer}>
     <div className="pg-pbp">
       <header className="strip">
         <div className="wrap">
@@ -103,6 +108,7 @@ export function PlayByPlay({ game: g }: { game: Game }) {
         <footer className="foot">{g.playByPlayFooter.map((p, i) => <p key={i}><T t={p} /></p>)}</footer>
       </main>
     </div>
+    </NamerContext.Provider>
   );
 }
 
@@ -110,6 +116,7 @@ function Row({ g, e, showGame, count }: { g: Game; e: GameEvent; showGame: boole
   const US = useSite().manifest.us;
   const i18n = useI18n();
   const { t, tx } = i18n;
+  const named = useNamed();
   const v = videoSec(g, e), clip = workingClip(g, v);
   const whistle = e.t === "N", goal = e.y === "Goal";
   const cls = [e.t, goal ? "goal" : "", whistle ? "whistle" : ""].join(" ").trim();
@@ -126,7 +133,7 @@ function Row({ g, e, showGame, count }: { g: Game; e: GameEvent; showGame: boole
         <span className={chip}><i></i>{label}</span>
         {e.y === "Shot" && e.on !== undefined ? <span className="res">{e.on ? t("onTarget") : t("offTarget")}</span> : null}
       </td>
-      <td className="desc"><Md s={tx(e.d)} />{e.f ? <span className="note"><Md s={tx(e.f)} /></span> : null}</td>
+      <td className="desc"><Md s={named(e, tx(e.d))} />{e.f ? <span className="note"><Md s={tx(e.f)} /></span> : null}</td>
       <td className="nb"><NoteButton slug={g.slug} anchor={`event:${e.id}`} label={`${e.h === 1 ? t("half1") : t("half2")} ${e.c} · ${label}`} count={count} /></td>
     </tr>
   );

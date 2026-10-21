@@ -1,7 +1,22 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { NoteButton } from "../components/Notes";
 import { formatDate, useI18n } from "../i18n";
 import type { PublicGame as Game, GameEvent } from "../schema";
+import { useSite } from "../site";
+
+/** Every game in the library, for the pages that sum them up. */
+export function useAllGames() {
+  const { manifest, loadGame } = useSite();
+  const [state, setState] = useState<{ games?: Game[]; error?: unknown }>({});
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    let live = true;
+    setState({});
+    Promise.all(manifest.games.map(g => loadGame(g.slug))).then(games => live && setState({ games }), error => live && setState({ error }));
+    return () => { live = false; };
+  }, [manifest, loadGame, attempt]);
+  return { ...state, retry: () => setAttempt(a => a + 1) };
+}
 
 type I18n = ReturnType<typeof useI18n>;
 

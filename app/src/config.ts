@@ -7,3 +7,7 @@ export const SUPABASE_ANON_KEY =
 // Key-derivation settings for the coach password, shared with tools/build.mjs. Not secret.
 import notesKdf from "../../tools/notes-kdf.json";
 export const NOTES_KDF = { salt: notesKdf.salt, iterations: notesKdf.iterations };
+
+// Key-derivation settings for the scorekeeper password, shared with tools/build.mjs. Not secret.
+import keeperKdf from "../../tools/keeper-kdf.json";
+export const KEEPER_KDF = { salt: keeperKdf.salt, iterations: keeperKdf.iterations };

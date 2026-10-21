@@ -1,11 +1,19 @@
-import { T } from "../components/RichText";
+import { Md, RosterContext, T } from "../components/RichText";
 import { NoteButton, useNoteCounts } from "../components/Notes";
 import { useI18n, type Key } from "../i18n";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { LineupPitch } from "../components/LineupPitch";
+import { Link } from "react-router-dom";
+import { halfLengths, lineupFor, minutes, playLineup, secondsOn, type Stint } from "../lib/lineup";
+import { POSITIONS, type RosterPlayer } from "../lib/positions";
+import { mmss } from "../lib/time";
 import { useNotes } from "../notes";
-import type { Game, Priority, PublicGame } from "../schema";
+import type { Game, Priority, PublicGame, Roster } from "../schema";
 import { useSite } from "../site";
+import { labelOf, playerId, useLineups, useRoster } from "../squad";
 import { SecHead, Toc } from "./shared";
+
+const clock = (s: number) => mmss(s).replace(/^0(\d)/, "$1");
 
 const PRI: Record<Priority, Key> = { high: "priHigh", med: "priMed", low: "priLow" };
 
@@ -37,6 +45,10 @@ export function Coaches({ game }: { game: PublicGame }) {
   const { t } = useI18n();
   const { setLoginOpen } = useNotes();
   const { locked, coaches, error } = useCoaches(game.slug);
+  const roster = useRoster();
+  const lineups = useLineups();
+  const resolved = useMemo(() => lineupFor(lineups, game.slug), [lineups, game.slug]);
+  const stints = useMemo(() => (resolved ? playLineup(resolved.lineup, halfLengths(game)).stints : null), [resolved, game]);
   if (locked) {
     return (
       <div className="status wrap locked">
@@ -49,10 +61,48 @@ export function Coaches({ game }: { game: PublicGame }) {
   }
   if (error) return <div className="status wrap" role="status"><p>{t("loadFailed")}</p></div>;
   if (!coaches) return <div className="status wrap" role="status"><p>{t("loading")}</p></div>;
-  return <CoachesBody game={{ ...game, coaches }} />;
+  return (
+    <RosterContext.Provider value={roster?.players.length ? { players: roster.players, stints } : null}>
+      <CoachesBody game={{ ...game, coaches }} roster={roster} stints={stints} estimated={!!resolved?.estimated} />
+    </RosterContext.Provider>
+  );
 }
 
-function CoachesBody({ game: g }: { game: Game }) {
+const POS_ORDER = Object.keys(POSITIONS);
+
+/** Who played where: one row per spell at a position, with when it started and ended. */
+function LineupSection({ g, stints, estimated, players, count }: { g: Game; stints: Stint[]; estimated: boolean; players?: RosterPlayer[]; count: (a: string) => number }) {
+  const { t, halfRef } = useI18n();
+  const len = halfLengths(g), end = len[1] + len[2];
+  const at = (s: number) => (s === 0 ? t("lineupStart") : s >= end ? t("fullTime")
+    : halfRef(s < len[1] ? `1H ${clock(s)}` : `2H ${clock(s - len[1])}`));
+  const rows = [...stints].sort((a, b) => POS_ORDER.indexOf(a.pos) - POS_ORDER.indexOf(b.pos) || a.from - b.from);
+  const mins = secondsOn(stints);
+  return (
+    <section className="sec" id="lineup">
+      <SecHead g={g} page="coaches" id="lineup" eyebrow={estimated ? `${t("lineup")} · ≈ ${t("legendEstimated")}` : t("lineup")} title={t("lineupTitle")}
+        sub={estimated ? `${t("lineupEstimatedSub")} ${t("lineupSub")}` : t("lineupSub")} count={count} />
+      <LineupPitch stints={stints} len={len} players={players} />
+      <div className="roster-wrap">
+        <table className="roster lineup">
+          <thead><tr><th>{t("colPositions")}</th><th>{t("colPlayer")}</th><th>{t("colOn")}</th><th>{t("colOff")}</th><th>{t("colMinutes")}</th></tr></thead>
+          <tbody>
+            {rows.map((s, i) => (
+              <tr key={i}>
+                <td><RosterContext.Provider value={null}><Md s={s.pos} /></RosterContext.Provider></td>
+                <td><Link to={`/player/${playerId(s.player)}`}>{labelOf(players, s.player)}</Link></td>
+                <td className="mono">{at(s.from)}</td><td className="mono">{at(s.to)}</td>
+                <td className="mono">{minutes(s.to - s.from)}'{mins.get(s.player)! - (s.to - s.from) > 30 ? <span className="tag"> / {minutes(mins.get(s.player)!)}'</span> : null}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function CoachesBody({ game: g, roster, stints, estimated }: { game: Game; roster: Roster | null; stints: Stint[] | null; estimated: boolean }) {
   const { manifest } = useSite();
   const { t, tx } = useI18n();
   const count = useNoteCounts(g.slug);
@@ -70,7 +120,8 @@ function CoachesBody({ game: g }: { game: Game }) {
       </header>
 
       <main className="wrap">
-        <Toc items={[["priorities", t("priorities")], ["thirds", t("byThird")], ["units", t("byUnit")], ["plan", t("trainingPlan")], ["clips", t("clips")]]} />
+        <Toc items={[["priorities", t("priorities")], ["thirds", t("byThird")], ["units", t("byUnit")], ["plan", t("trainingPlan")], ["clips", t("clips")],
+          ...(stints ? [["lineup", t("lineup")] as [string, string]] : []), ...(roster?.players.length ? [["roster", t("roster")] as [string, string]] : [])]} />
 
         <section className="sec" id="priorities">
           <SecHead g={g} page="coaches" id="priorities" eyebrow={<T t={C.priorities.eyebrow} />} title={tx(C.priorities.title)} count={count} />
@@ -155,7 +206,7 @@ function CoachesBody({ game: g }: { game: Game }) {
                 <article key={i} className="unit">
                   <div className="unit-head">
                     <h3><T t={u.name} /></h3>
-                    <span className="pos">{u.pos}</span>
+                    <span className="pos"><Md s={u.pos} /></span>
                     <NoteButton slug={g.slug} anchor={anchor} label={tx(u.name)} count={count(anchor)} />
                   </div>
                   <p className="verdict"><T t={u.verdict} /></p>
@@ -195,6 +246,24 @@ function CoachesBody({ game: g }: { game: Game }) {
             </table>
           </div>
         </section>
+
+        {stints ? <LineupSection g={g} stints={stints} estimated={estimated} players={roster?.players} count={count} /> : null}
+
+        {roster?.players.length ? (
+          <section className="sec" id="roster">
+            <SecHead g={g} page="coaches" id="roster" eyebrow={t("roster")} title={t("rosterTitle")} sub={t("rosterSub")} count={count} />
+            <div className="roster-wrap">
+              <table className="roster">
+                <thead><tr><th>{t("colNumber")}</th><th>{t("colPlayer")}</th><th>{t("colPositions")}</th></tr></thead>
+                <tbody>
+                  {[...roster.players].sort((a, b) => (a.number ?? 999) - (b.number ?? 999) || a.name.localeCompare(b.name)).map(p => (
+                    <tr key={p.name}><td className="mono">{p.number ?? ""}</td><td><Link to={`/player/${playerId(p.name)}`}>{p.name}</Link></td><td><RosterContext.Provider value={null}><Md s={p.positions.join(" · ")} /></RosterContext.Provider></td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
 
         <footer className="foot">{C.footer.map((p, i) => <p key={i}><T t={p} /></p>)}</footer>
       </main>

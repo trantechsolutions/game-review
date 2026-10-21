@@ -2,6 +2,7 @@
 // Every piece of prose is a Text: { en, es }. Prose may use a tiny inline markup that
 // RichText renders: **bold**, *italic*, `mono`. No HTML is ever rendered from data.
 import { z } from "zod";
+import { POSITIONS } from "./lib/positions";
 
 export const Text = z.object({ en: z.string().min(1), es: z.string().min(1) }).strict();
 export type Text = z.infer<typeof Text>;
@@ -15,7 +16,8 @@ export type Priority = z.infer<typeof Priority>;
 export const EVENT_TYPES = [
   "Kickoff", "Half time", "Full time", "Restart",
   "Goal", "Shot", "Save", "Turnover", "Ball win", "Pass", "Run",
-  "Corner", "Throw-in", "Free kick", "Foul", "Yellow", "Red", "Sub",
+  "Cross", "Clearance",
+  "Corner", "Throw-in", "Illegal throw-in", "Goal kick", "Free kick", "Penalty", "Offside", "Foul", "Handball", "Yellow", "Red", "Sub",
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
@@ -127,7 +129,8 @@ export const Game = z.object({
       zones: z.array(z.object({ name: Text, title: Text, pri: Priority, text: Text, counts: z.array(Text) }).strict()).length(3),
       blocks: z.array(z.object({
         name: Text, title: Text, intro: Text, keep: z.array(Text),
-        fixes: z.array(z.object({ pri: Priority, title: Text, body: Text, coach: Text.optional(), ev: z.array(z.string()) }).strict()),
+        // area: what the fix works on, so the season overview can rank recurring themes.
+        fixes: z.array(z.object({ pri: Priority, area: z.enum(IMPROVEMENT_AREAS), title: Text, body: Text, coach: Text.optional(), ev: z.array(z.string()) }).strict()),
       }).strict()).length(3),
     }).strict(),
     units: z.object({
@@ -172,6 +175,99 @@ export const PublicGame = Game.omit({ coaches: true });
 export type PublicGame = z.infer<typeof PublicGame>;
 export const CoachContent = z.object({ coaches: Game.shape.coaches }).strict();
 
+// The squad (private/data/roster.json), sealed with the coach-password key like the breakdown.
+// Positions are acronyms, first choice first; the coaches' breakdown uses them to suggest who
+// could have made a play.
+export const Roster = z.object({
+  players: z.array(z.object({
+    name: z.string().min(1),
+    number: z.number().int().nonnegative().nullable().optional(),
+    positions: z.array(z.enum(Object.keys(POSITIONS) as [string, ...string[]])),
+  }).strict()),
+}).strict();
+export type Roster = z.infer<typeof Roster>;
+
+// Who played where (private/data/lineups.json), sealed with the coach-password key like the roster.
+// Players are named exactly as in the roster. A game with no starters listed has no lineup yet.
+const Pos = z.enum(Object.keys(POSITIONS) as [string, ...string[]]);
+export const LineupChange = z.union([
+  // A substitution: `on` takes `off`'s position unless `pos` says otherwise.
+  z.object({ h: z.union([z.literal(1), z.literal(2)]), c: Clock, off: z.string().min(1), on: z.string().min(1), pos: Pos.optional() }).strict(),
+  // A player already on the field moves to another position.
+  z.object({ h: z.union([z.literal(1), z.literal(2)]), c: Clock, player: z.string().min(1), pos: Pos }).strict(),
+]);
+export type LineupChange = z.infer<typeof LineupChange>;
+const Starters = z.array(z.object({ pos: Pos, player: z.string().min(1) }).strict());
+export const Lineup = z.object({
+  start: Starters,                  // empty: the default starters, if there are any
+  changes: z.array(LineupChange),
+  estimated: z.boolean().optional(), // worked out from the tape, not from the coach's sheet
+}).strict();
+export type Lineup = z.infer<typeof Lineup>;
+// `default` is the usual starting lineup, used for any game that doesn't list its own starters.
+export const Lineups = z.object({ default: z.object({ start: Starters }).strict().optional(), games: z.record(z.string(), Lineup) }).strict();
+export type Lineups = z.infer<typeof Lineups>;
+
+// The scorekeeper's squad list (built from roster.json without anything else), sealed with the
+// scorekeeper-password key. `us` is our short team name, which the public app code never holds.
+export const KeeperRoster = z.object({
+  us: z.string(),
+  players: Roster.shape.players,
+}).strict();
+export type KeeperRoster = z.infer<typeof KeeperRoster>;
+
+// A scorekeeper's stat log: one entry per tap, append-only. Undo appends a "void" naming the entry it
+// cancels, so logs from two phones merge by id. Times are the half and the clock in it, as in a game file;
+// x/y is where on the pitch, 0–100 with us attacking to the right (y = 0 is our left touchline).
+export const KEEP_TYPES = [
+  "Kickoff", "Pass", "Ball win", "Turnover", "Cross", "Clearance",
+  "Goal", "Shot", "Save", "Foul", "Handball", "Offside", "Yellow", "Red",
+  "Throw-in", "Illegal throw-in", "Corner", "Goal kick", "Free kick", "Penalty",
+] as const;
+export type KeepType = (typeof KEEP_TYPES)[number];
+const Half12 = z.union([z.literal(1), z.literal(2)]);
+export const KeepSetup = z.object({
+  slug: z.string().regex(/^\d{4}-\d{2}-\d{2}-[a-z0-9-]+$/),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  time: z.string(),                 // kickoff "13:30", or ""
+  opponent: z.string().min(1),
+  home: z.boolean().nullable(),
+  format: z.number().int().min(1).max(11), // players a side: 7 for 7v7
+  formation: z.string().optional(),         // "4-4-2"; keeplog.ts SHAPES
+  side: z.enum(["left", "right"]).optional(), // where our goal is in the first half, as the scorekeeper sees it
+  halfMin: z.number().int().min(1).max(60),
+  stopClock: z.boolean().optional(),        // the clock counts down and stops for goals, cards and subs
+  level: z.enum(["beginner", "advanced"]).optional(), // beginner: team stats only, no lineup
+  start: Starters,
+}).strict();
+export type KeepSetup = z.infer<typeof KeepSetup>;
+const Coord = z.number().min(0).max(100);
+const EntryBase = { id: z.string().regex(/^[a-z0-9-]{8,40}$/), at: z.number() };
+export const KeepEntry = z.discriminatedUnion("k", [
+  z.object({ ...EntryBase, k: z.literal("setup"), setup: KeepSetup }).strict(),
+  // The clock reads `c` at this moment and is running (or stopped) from here on.
+  z.object({ ...EntryBase, k: z.literal("clock"), h: Half12, c: Clock, run: z.boolean() }).strict(),
+  z.object({ ...EntryBase, k: z.literal("end"), h: Half12, c: Clock }).strict(),
+  z.object({
+    ...EntryBase, k: z.literal("ev"), h: Half12, c: Clock, type: z.enum(KEEP_TYPES), t: z.enum(["D", "O"]),
+    player: z.string().min(1).optional(),    // ours, by roster name (for an own goal by us, t is "O")
+    opp: z.enum(["gk", "pl"]).optional(),    // theirs: their goalkeeper or one of their players
+    to: z.string().min(1).optional(),        // a pass's receiver
+    cross: z.boolean().optional(),           // a pass or a lost ball that was a cross
+    via: z.enum(["pass", "cross", "long"]).optional(), // how a corner or goal kick was played
+    on: z.boolean().optional(),              // a shot on target
+    result: z.enum(["goal", "saved", "caught", "blocked", "off", "post"]).optional(), // a shot's outcome
+    goal: z.tuple([z.number().min(-1).max(2), z.number().min(-1).max(2)]).optional(), // where on the goal: 0–1 post to post, 0–1 ground to bar
+    assist: z.string().min(1).optional(),    // a goal's assist, ours
+    og: z.boolean().optional(),              // an own goal
+    x: Coord.optional(), y: Coord.optional(), // where: the shot was taken, the ball went out
+  }).strict(),
+  z.object({ ...EntryBase, k: z.literal("sub"), h: Half12, c: Clock, off: z.string().min(1), on: z.string().min(1), pos: Pos.optional() }).strict(),
+  z.object({ ...EntryBase, k: z.literal("move"), h: Half12, c: Clock, player: z.string().min(1), pos: Pos }).strict(),
+  z.object({ ...EntryBase, k: z.literal("void"), ref: z.string() }).strict(),
+]);
+export type KeepEntry = z.infer<typeof KeepEntry>;
+
 // The decrypted manifest: the game list plus where each encrypted file lives.
 export const Manifest = z.object({
   us: z.string(),                   // our short team name; kept out of the public app code
@@ -182,5 +278,7 @@ export const Manifest = z.object({
     coachFile: z.string(),          // the coaches' breakdown, sealed with the coach-password key
   }).strict()),
   clips: z.record(z.string(), z.object({ file: z.string(), bytes: z.number() }).strict()), // "<slug>/<clip id>"
+  rosterFile: z.string().optional(), // the roster, sealed with the coach-password key
+  lineupsFile: z.string().optional(), // the lineups, sealed with the coach-password key
 }).strict();
 export type Manifest = z.infer<typeof Manifest>;

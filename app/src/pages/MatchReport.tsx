@@ -4,6 +4,7 @@ import { useI18n, type Key } from "../i18n";
 import { mmss, sec, videoSec, workingClip } from "../lib/time";
 import type { PublicGame as Game, GameEvent } from "../schema";
 import { useSite } from "../site";
+import { NamerContext, useNamed, useNamer } from "../squad";
 import { eventLabel, SecHead, Toc, useDateLine } from "./shared";
 
 export function MatchReport({ game: g }: { game: Game }) {
@@ -13,8 +14,10 @@ export function MatchReport({ game: g }: { game: Game }) {
   const R = g.report;
   const dateLine = useDateLine(g);
   const byId = new Map(g.events.map(e => [e.id, e]));
+  const namer = useNamer(g);
 
   return (
+    <NamerContext.Provider value={namer}>
     <div className="pg-report">
       <header className="board">
         <div className="wrap">
@@ -129,6 +132,7 @@ export function MatchReport({ game: g }: { game: Game }) {
         <footer className="foot">{R.footer.map((p, i) => <p key={i}><T t={p} /></p>)}</footer>
       </main>
     </div>
+    </NamerContext.Provider>
   );
 }
 
@@ -136,6 +140,7 @@ function ReportEvent({ g, e, d, label, count }: { g: Game; e: GameEvent; d?: str
   const US = useSite().manifest.us;
   const i18n = useI18n();
   const { t, tx } = i18n;
+  const named = useNamed();
   const v = videoSec(g, e), clip = workingClip(g, v);
   const cls = ["ev", e.t, e.y === "Goal" ? "goal" : "", e.key ? "key" : "", e.t === "N" ? "whistle" : ""].filter(Boolean).join(" ");
   const chip = `chip ${e.t}${e.y === "Yellow" ? " yellow" : e.y === "Red" ? " red" : ""}`;
@@ -148,7 +153,7 @@ function ReportEvent({ g, e, d, label, count }: { g: Game; e: GameEvent; d?: str
       </span>
       <span className={chip}><i></i>{text}</span>
       <span className="desc">
-        {d !== undefined ? <Md s={d} /> : <><Md s={tx(e.d)} />{e.f ? <> <i><Md s={tx(e.f)} /></i></> : null}</>}
+        {d !== undefined ? <Md s={named(e, d)} /> : <><Md s={named(e, tx(e.d))} />{e.f ? <> <i><Md s={tx(e.f)} /></i></> : null}</>}
         {e.y === "Shot" && e.on !== undefined ? <> <i>({e.on ? t("onTarget") : t("offTarget")})</i></> : null}
         {" "}<NoteButton slug={g.slug} anchor={`event:${e.id}`} label={`${e.h === 1 ? t("half1") : t("half2")} ${e.c} · ${text}`} count={count} />
       </span>

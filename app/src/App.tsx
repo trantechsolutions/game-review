@@ -6,8 +6,11 @@ import { NotesProvider, useNotes } from "./notes";
 import { Coaches } from "./pages/Coaches";
 import { GameList } from "./pages/GameList";
 import { Highlights } from "./pages/Highlights";
+import { KeepApp } from "./pages/Keep";
 import { MatchReport } from "./pages/MatchReport";
 import { PlayByPlay } from "./pages/PlayByPlay";
+import { Player, Players } from "./pages/Players";
+import { Season } from "./pages/Season";
 import { UnitReview } from "./pages/UnitReview";
 import { useCoaches } from "./pages/Coaches";
 import type { PublicGame } from "./schema";
@@ -46,7 +49,10 @@ function AppBar() {
         <Link className="home" to="/">{manifest.us} <span>film</span></Link>
         {slug ? (Object.keys(PAGES) as PageId[]).filter(p => p !== "coaches" || notes.signedIn).map(p => (
           <NavLink key={p} to={`/game/${slug}/${p}`}>{t(PAGES[p].key)}</NavLink>
-        )) : null}
+        )) : <>
+          <NavLink to="/season">{t("seasonOverview")}</NavLink>
+          {notes.signedIn ? <NavLink to="/players">{t("players")}</NavLink> : null}
+        </>}
       </nav>
       <div className="tools">
         <LangToggle />
@@ -142,6 +148,10 @@ const router = createHashRouter([{
   element: <Shell />,
   children: [
     { path: "/", element: <GameList /> },
+    { path: "/season", element: <Season /> },
+    { path: "/players", element: <Players /> },
+    { path: "/player/:id", element: <Player /> },
+    { path: "/keep/*", element: null }, // App swaps to scorekeeper mode on this hash
     { path: "/game/:slug", element: <GamePage /> },
     { path: "/game/:slug/:page", element: <GamePage /> },
     { path: "*", element: <Navigate to="/" replace /> },
@@ -174,12 +184,26 @@ function Gate({ submit }: { submit: (pw: string, remember: boolean) => Promise<v
         <button type="submit" className="btn-solid" disabled={busy}>{t("open")}</button>
         <p className="msg" role="alert">{msg}</p>
         <LangToggle className="btn-line lang" />
+        <a className="btn-line lang" href="#/keep">{t("scorekeeper")}</a>
       </form>
     </main>
   );
 }
 
+// Scorekeeper mode has its own password and opens without the team password.
+const isKeep = () => /^#\/keep(\/|$)/.test(location.hash);
+
 export function App() {
+  const [keep, setKeep] = useState(isKeep);
+  useEffect(() => {
+    const on = () => setKeep(isKeep());
+    window.addEventListener("hashchange", on);
+    return () => window.removeEventListener("hashchange", on);
+  }, []);
+  return keep ? <KeepApp /> : <FilmApp />;
+}
+
+function FilmApp() {
   const { state, submit, retry } = useUnlock();
   const { t } = useI18n();
   if (state.phase === "checking") return <Status><p>{t("loading")}</p></Status>;

@@ -1,0 +1,5 @@
+{
+  "_readme": "Key-derivation settings for the scorekeeper password (stat logs and the keeper roster). Not secret. Changing them makes existing stat logs unreadable.",
+  "salt": "OKZsjBbtZEQFND7/M4LJLA==",
+  "iterations": 600000
+}
