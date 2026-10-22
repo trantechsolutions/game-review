@@ -66,3 +66,56 @@ export function r2Client(c) {
     url: name => `${c.publicUrl}/${name}`,
   };
 }
+
+// The clips the manager plays (NOLA DFC Manager: supabase/functions/film-clip), as plain MP4s in a private
+// bucket: private/.r2.json "clipsBucket". Nobody reads it directly; the manager hands out short-lived links.
+export function loadClipsR2(file) {
+  if (!existsSync(file)) return null;
+  let c;
+  try {
+    const raw = readFileSync(file, "utf8").replace(/^﻿/, "");
+    c = JSON.parse(raw.split(/\r?\n/).filter(l => !/^\s*\/\//.test(l)).join("\n"));
+  } catch {
+    throw new Error(`${file} isn't valid JSON (contents not shown).`);
+  }
+  // The file may only hold the old encrypted bucket's settings so far.
+  if (!c.clipsBucket) return null;
+  const missing = ["endpoint", "accessKeyId", "secretAccessKey"].filter(k => !c[k]);
+  if (missing.length) throw new Error(`${file} is missing: ${missing.join(", ")}`);
+  return c;
+}
+
+export function clipsClient(c) {
+  const s3 = new S3Client({
+    region: "auto", endpoint: c.endpoint,
+    credentials: { accessKeyId: c.accessKeyId, secretAccessKey: c.secretAccessKey },
+  });
+  const Bucket = c.clipsBucket;
+  return {
+    /** key → { size, etag } for every object under prefix. */
+    async list(prefix) {
+      const out = new Map();
+      let token;
+      do {
+        const r = await s3.send(new ListObjectsV2Command({ Bucket, Prefix: prefix, ContinuationToken: token }));
+        for (const o of r.Contents ?? []) out.set(o.Key, { size: o.Size, etag: (o.ETag ?? "").replace(/"/g, "") });
+        token = r.IsTruncated ? r.NextContinuationToken : undefined;
+      } while (token);
+      return out;
+    },
+    /** Uploads unless an identical object (same MD5) is already there. Returns true if uploaded. */
+    async put(key, buf, existing) {
+      const md5 = createHash("md5").update(buf).digest("hex");
+      const have = existing.get(key);
+      if (have && have.size === buf.length && have.etag === md5) return false;
+      await s3.send(new PutObjectCommand({ Bucket, Key: key, Body: buf, ContentType: "video/mp4", CacheControl: "private, no-cache" }));
+      return true;
+    },
+    async remove(keys) {
+      for (let i = 0; i < keys.length; i += 1000) {
+        await s3.send(new DeleteObjectsCommand({ Bucket, Delete: { Objects: keys.slice(i, i + 1000).map(Key => ({ Key })) } }));
+      }
+      return keys.length;
+    },
+  };
+}

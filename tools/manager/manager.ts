@@ -31,8 +31,18 @@
 //                                                 each player's season numbers (minutes, starts, positions, goals,
 //                                                 assists, shots, cards) from the lineups, the scorekeeper's logs
 //                                                 and Ollie, into the manager (player_season_stats)
-//   npx tsx tools/manager/manager.ts check        the project, the team, the film's functions and its link
+//   npx tsx tools/manager/manager.ts publish [--dry-run]
+//                                                 the film inside the manager: every game, breakdown, lineup,
+//                                                 position and Ollie game into its tables, and the clips as plain
+//                                                 MP4s into the private R2 bucket (private/.r2.json clipsBucket);
+//                                                 also links each game to the schedule, like games. Needs
+//                                                 nola-dfc-manager/sql/film_native_migration.sql run once
+//   npx tsx tools/manager/manager.ts move-notes [--dry-run]
+//                                                 opens the encrypted coach notes with the coach password and
+//                                                 copies them into the manager's film_notes; safe to run again
+//   npx tsx tools/manager/manager.ts check    the project, the team, the film's functions and its link
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { spawnSync } from "node:child_process";
 import { pbkdf2Sync } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -44,7 +54,8 @@ import { fromKeeper, fromLibrary, fromOllie, seasonStats, type SourceGame } from
 import { deriveNotesKeys, keyHash, openNote, scopeFor } from "../../app/src/lib/notesCrypto";
 import { formatRoster, mergeRoster, renameInJson, type ManagerPlayer } from "../../app/src/lib/rosterMerge";
 import { matchGame, toSchedule, type ManagerEvent } from "../../app/src/lib/schedule";
-import { KeepEntry, Lineups, OllieHistory, OlliePlayers, Roster, ScheduledGame, type PublicGame } from "../../app/src/schema";
+import { KeepEntry, Lineups, OllieHistory, OlliePlayers, Roster, ScheduledGame, type Game, type Lineup, type PublicGame } from "../../app/src/schema";
+import { clipsClient, loadClipsR2 } from "../lib/r2.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const PRIVATE = join(ROOT, "private");
@@ -269,6 +280,131 @@ if (cmd === "teams") {
     if (error) fail(`${error.message}. Run nola-dfc-manager/sql/player_season_stats_migration.sql in the manager project first.`);
   }
   console.log(`✓ ${t.name}: ${rows.length} player seasons written to the manager.`);
+} else if (cmd === "publish") {
+  const s = settings();
+  const teamId = needTeam(s);
+  const db = admin(s);
+  const t = await team(db, teamId);
+  const dry = args.includes("--dry-run");
+  const v = spawnSync(process.execPath, [join(ROOT, "node_modules", "tsx", "dist", "cli.mjs"), join(ROOT, "tools", "validate.ts")], { stdio: "inherit" });
+  if (v.status !== 0) fail("Validation failed; nothing was published.");
+  const json = (f: string) => (existsSync(join(DATA, f)) ? JSON.parse(readFileSync(join(DATA, f), "utf8")) : null);
+  const site = json("site.json") as { us: string };
+  const roster = Roster.parse(json("roster.json") ?? { players: [] });
+  const lineups = json("lineups.json") ? Lineups.parse(json("lineups.json")) : null;
+  const games = readdirSync(join(DATA, "games")).filter(f => f.endsWith(".json")).sort()
+    .map(f => JSON.parse(readFileSync(join(DATA, "games", f), "utf8")) as Game);
+  const schedule = await scheduleOf(db, s, teamId, t.name);
+  const now = new Date().toISOString();
+
+  // Lineups name players by roster name; the manager keeps them by player id where there is one.
+  const idOf = new Map(roster.players.filter(p => p.managerId).map(p => [p.name, p.managerId!]));
+  const unlinked = new Set<string>();
+  const byId = (name: string) => idOf.get(name) ?? (unlinked.add(name), name);
+  const toIds = (l: { start: { pos: string; player: string }[]; changes?: Lineup["changes"]; estimated?: boolean }) => ({
+    ...l,
+    start: l.start.map(x => ({ ...x, player: byId(x.player) })),
+    ...(l.changes ? {
+      changes: l.changes.map(c => ("off" in c ? { ...c, off: byId(c.off), on: byId(c.on) } : { ...c, player: byId(c.player) })),
+    } : {}),
+  });
+
+  const gameRows = games.map(g => {
+    const m = matchGame(g, schedule);
+    console.log(m ? `  ✓ ${g.date} ${g.opponent} → ${m.title || "(untitled)"}` : `  ? ${g.date} ${g.opponent}: no game in the manager's schedule that day (published, but not linked)`);
+    const { coaches: _coaches, ...pub } = g;
+    return {
+      team_id: teamId, slug: g.slug, event_id: m?.eventId ?? null, game_date: g.date, game_time: g.time,
+      opponent: g.opponent, home: g.home, score_us: g.score.us, score_them: g.score.them,
+      has_highlights: g.highlights.clips.length > 0,
+      // The full-game video's path is on this PC only.
+      content: { ...pub, highlights: { ...pub.highlights, source: "" } },
+      updated_at: now,
+    };
+  });
+  const breakdownRows = games.map(g => ({ team_id: teamId, slug: g.slug, content: g.coaches, updated_at: now }));
+  const positionRows = roster.players.filter(p => p.managerId)
+    .map(p => ({ team_id: teamId, player_id: p.managerId, positions: p.positions, updated_at: now }));
+  const lineupRows = [
+    ...(lineups?.default ? [{ team_id: teamId, slug: "*", lineup: toIds({ ...lineups.default, changes: [] }), updated_at: now }] : []),
+    ...Object.entries(lineups?.games ?? {}).map(([slug, l]) => ({ team_id: teamId, slug, lineup: toIds(l), updated_at: now })),
+  ];
+  const history = json("ollie/history.json") ? OllieHistory.parse(json("ollie/history.json")) : null;
+  const olliePlayers = json("ollie/players.json") ? OlliePlayers.parse(json("ollie/players.json")) : null;
+  const ollieRows = (history?.games ?? []).map(o => ({ team_id: teamId, ollie_id: o.id, game_date: o.date, content: o, updated_at: now }));
+  const olliePlayerRows = Object.entries(olliePlayers?.games ?? {})
+    .filter(([id]) => ollieRows.some(r => r.ollie_id === id))
+    .map(([id, players]) => ({ team_id: teamId, ollie_id: id, players, updated_at: now }));
+
+  for (const n of unlinked) console.log(`  ? ${n} is in lineups.json but has no manager record (run roster); kept by name`);
+  console.log(`${t.name}: ${gameRows.length} games, ${positionRows.length} players' positions, ${lineupRows.length} lineups, ${ollieRows.length} Ollie games`);
+
+  // Clips: plain MP4s in the private bucket, under the team's id.
+  let r2c: ReturnType<typeof loadClipsR2> = null;
+  try { r2c = loadClipsR2(join(PRIVATE, ".r2.json")); } catch (e) { fail((e as Error).message); }
+  const clipKeys = new Map<string, string>();
+  for (const g of games) for (const c of g.highlights.clips) clipKeys.set(`${teamId}/${g.slug}/${c.id}.mp4`, join(PRIVATE, "clips", g.slug, `${c.id}.mp4`));
+  if (!r2c && clipKeys.size) console.log(`  • no clipsBucket in private/.r2.json: ${clipKeys.size} clips not uploaded`);
+  if (dry) { console.log("(dry run: nothing written)"); process.exit(0); }
+
+  const up = async (table: string, rows: object[], onConflict: string) => {
+    for (let i = 0; i < rows.length; i += 200) {
+      const { error } = await db.from(table).upsert(rows.slice(i, i + 200), { onConflict });
+      if (error) fail(`${table}: ${error.message}. Run nola-dfc-manager/sql/film_native_migration.sql in the manager project first.`);
+    }
+  };
+  // Whatever isn't in this publish any more comes off the manager too.
+  const prune = async (table: string, col: string, keep: string[]) => {
+    const { data, error } = await db.from(table).select(col).eq("team_id", teamId);
+    if (error) fail(`${table}: ${error.message}`);
+    const gone = (data ?? []).map(r => (r as unknown as Record<string, string>)[col]).filter(x => !keep.includes(x));
+    if (gone.length) await db.from(table).delete().eq("team_id", teamId).in(col, gone);
+    return gone.length;
+  };
+
+  await up("film_teams", [{ team_id: teamId, short_name: site.us, updated_at: now }], "team_id");
+  await up("film_games", gameRows, "team_id,slug");
+  await up("film_breakdowns", breakdownRows, "team_id,slug");
+  await up("film_positions", positionRows, "team_id,player_id");
+  await up("film_lineups", lineupRows, "team_id,slug");
+  await up("film_ollie_games", ollieRows, "team_id,ollie_id");
+  await up("film_ollie_players", olliePlayerRows, "team_id,ollie_id");
+  const removed = await prune("film_games", "slug", gameRows.map(r => r.slug));
+  await prune("film_lineups", "slug", lineupRows.map(r => r.slug));
+  await prune("film_ollie_games", "ollie_id", ollieRows.map(r => r.ollie_id));
+
+  let uploaded = 0, clipsGone = 0;
+  if (r2c) {
+    const r2 = clipsClient(r2c);
+    const inBucket = await r2.list(`${teamId}/`).catch((e: Error) => fail(`Couldn't reach the clips bucket (${e.name}). Check private/.r2.json.`));
+    for (const [key, src] of clipKeys) {
+      if (!existsSync(src)) fail(`Missing clip ${src}. Run tools/make_highlights.py for that game.`);
+      if (await r2.put(key, readFileSync(src), inBucket)) uploaded++;
+    }
+    clipsGone = await r2.remove([...inBucket.keys()].filter(k => !clipKeys.has(k)));
+  }
+  console.log(`✓ ${t.name}: published ${gameRows.length} games to the manager${removed ? `, ${removed} removed` : ""}; clips: ${uploaded} uploaded, ${clipKeys.size - uploaded} unchanged${clipsGone ? `, ${clipsGone} removed` : ""}.`);
+} else if (cmd === "move-notes") {
+  const s = settings();
+  const teamId = needTeam(s);
+  const db = admin(s);
+  // The encrypted coach notes (coach_notes), opened with the coach password and kept in plain text in
+  // film_notes. Same ids, so running it again adds nothing twice.
+  const coach = await deriveNotesKeys(readSecret(".coach-password"), NOTES_KDF);
+  const { data, error } = await db.from("coach_notes").select("id, data, updated_at");
+  if (error) fail(`coach_notes: ${error.message}`);
+  const rows = [];
+  for (const r of (data ?? []) as { id: string; data: string; updated_at: string }[]) {
+    const n = await openNote(coach.encRaw, r.data).catch(() => null);
+    if (!n) { console.warn(`  note ${r.id} doesn't open with this coach password; skipped`); continue; }
+    rows.push({ id: r.id, team_id: teamId, slug: n.slug, anchor: n.anchor, body: n.text, author_id: null, author_name: n.author ?? "", created_at: r.updated_at, updated_at: r.updated_at });
+  }
+  if (args.includes("--dry-run")) { console.log(`${rows.length} notes would move (dry run: nothing written)`); process.exit(0); }
+  if (rows.length) {
+    const { error: e } = await db.from("film_notes").upsert(rows, { onConflict: "id", ignoreDuplicates: true });
+    if (e) fail(`film_notes: ${e.message}. Run nola-dfc-manager/sql/film_native_migration.sql first.`);
+  }
+  console.log(`✓ ${rows.length} coach notes moved into the manager.`);
 } else if (cmd === "check") {
   const s = settings();
   const db = admin(s);
@@ -284,5 +420,5 @@ if (cmd === "teams") {
   console.log(notes.error ? `✗ coach notes: ${notes.error.message} (paste private/film-setup.sql)` : notes.data === true ? "✓ coach notes answer to the coach password" : "✗ coach notes don't accept this coach password (run setup-sql again and paste it)");
   console.log(SUPABASE_URL.replace(/\/$/, "") === s.url ? "✓ app/src/config.ts points at the manager's project" : `• app/src/config.ts still points at ${SUPABASE_URL} (switch it after migrate)`);
 } else {
-  fail("usage: npx tsx tools/manager/manager.ts teams | setup-sql | migrate | link | roster [--dry-run] | schedule | games [--dry-run] | stats [--dry-run] | check");
+  fail("usage: npx tsx tools/manager/manager.ts teams | setup-sql | migrate | link | roster [--dry-run] | schedule | games [--dry-run] | stats [--dry-run] | publish [--dry-run] | move-notes [--dry-run] | check");
 }
