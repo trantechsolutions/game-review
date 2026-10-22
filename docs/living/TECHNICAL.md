@@ -2,6 +2,15 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-22 — Publishing into NOLA DFC Manager (833ddac..833ddac)
+
+- **`tools/manager/manager.ts publish [--dry-run]`:** runs `validate.ts` first, then upserts `film_teams`, `film_games` (now with `content` = the game minus `coaches`, `highlights.source` blanked, plus score, opponent, time, home and the schedule match), `film_breakdowns`, `film_positions` (roster entries with `managerId`), `film_lineups` (names mapped to `managerId`; unmapped names kept and reported; `'*'` = default), `film_ollie_games` and `film_ollie_players`. Rows for games, lineups and Ollie games no longer in the files are deleted. Needs `nola-dfc-manager/sql/film_native_migration.sql`.
+- **Clips:** `tools/lib/r2.mjs` adds `loadClipsR2` (reads `clipsBucket` from `private/.r2.json`, or returns null when it's missing) and `clipsClient` (list by prefix, put as `video/mp4` skipping objects whose MD5 matches, batch delete). Clips go to `<teamId>/<slug>/<clipId>.mp4`. Objects under the team prefix that are no longer listed are removed. The old `.bin` objects in the public bucket are untouched.
+- **`move-notes [--dry-run]`:** reads `coach_notes` with the service key, opens each with the coach password (`openNote`), and upserts into `film_notes` with the same id (`ignoreDuplicates`), so it is safe to run again.
+- **Not committed:** `docs/reference/` stays out of the repo, as before.
+- **Tests:** `npx tsx tools/manager/manager.ts publish --dry-run` against the manager project: 10 games, 11 lineups, 17 positions, 118 Ollie games. A full publish wrote the data. The first clip upload hit AccessDenied until the R2 token was given the new bucket.
+- **Rollback:** revert 833ddac. The manager's tables are left as they are. Drop them with the rollback steps in nola-dfc-manager's TECHNICAL.md entry of the same date.
+
 ## 2026-10-21 — NOLA DFC Manager connection (129c8c6..129c8c6)
 
 - **Supabase move:** `app/src/config.ts` points `SUPABASE_URL` and `SUPABASE_ANON_KEY` at the manager's project. Notes and stat logs are copied over by `tools/manager/manager.ts migrate`.

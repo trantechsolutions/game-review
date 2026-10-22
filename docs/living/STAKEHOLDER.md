@@ -2,6 +2,12 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-22 — Publishing into NOLA DFC Manager (833ddac..833ddac)
+
+- The season overview, game library, match reports and highlight clips now open inside NOLA DFC Manager, with no password. Everyone on the team can see them, and coaches also see the recurring themes and who played where.
+- Highlight clips play straight from the manager and start faster, because they no longer have to be downloaded and unlocked first.
+- The play-by-play, unit review, coaches' breakdown, player pages and the scorekeeper are still on this site for now.
+
 ## 2026-10-21 — NOLA DFC Manager connection (129c8c6..129c8c6)
 
 - The game film site now opens straight from NOLA DFC Manager, with no password to type. Families see the games. Coaches also get the coach area. Anyone given the Scorekeeper role also gets the scorekeeper screen.

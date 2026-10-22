@@ -2,6 +2,20 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-22 — Publishing into NOLA DFC Manager (833ddac..833ddac)
+
+**Delivered.**
+- **Publishing into the manager:** one command puts every game, breakdown, lineup, player position and Ollie game into the manager's database, and uploads the highlight clips. The manager now shows the season, library, match reports and highlights itself.
+- **Notes carried over:** a one-time command copies the existing coach notes into the manager.
+
+**Decisions.**
+- **No more encryption for the manager's copy.** The owner approved dropping the passwords. The manager protects the data with sign-in and per-team access rules instead.
+- **Clips in a separate private R2 bucket.** The old public bucket keeps serving this site's encrypted clips until it is retired, so nothing breaks during the move.
+
+**Risk.** This site and its passwords must stay up until the remaining pages move. R2 keys were exposed in a screenshot during setup and should be rotated.
+
+**Open.** Move the play-by-play, unit review, coaches' breakdown, players, Ollie history and the scorekeeper, then retire this site, the public bucket and the passwords.
+
 ## 2026-10-21 — NOLA DFC Manager connection (129c8c6..129c8c6)
 
 **Delivered.**
