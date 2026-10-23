@@ -2,6 +2,15 @@
 
 Engineering record per push, newest first.
 
+## 2026-10-23 — 19 September game (ca79a09..54381d1)
+
+- **ca79a09:** `tools/lib/r2.d.mts` declares `loadR2`, `r2Client`, `loadClipsR2` and `clipsClient`. `tsc --noEmit` had failed with TS7016 on `manager.ts`'s import of `../lib/r2.mjs` since 833ddac, which blocked `npm run build`.
+- **54381d1:** new private game file (slug `2026-09-19-cfc`), 11 events, 5 clips. Source: the YouTube upload of the Reeplayer tape (yt-dlp, 1080p), kick-offs 487 s and 3182 s from its chapters, running clock through the water breaks. The lineup entry is empty and estimated. `public/`: two modified and two new `.bin`. R2 (encrypted bucket): 5 clips uploaded.
+- **Manager:** `manager.ts publish` wrote 11 games, linked `2026-09-19-cfc` to its schedule event, and uploaded 5 plain clips to the private bucket.
+- **Tests:** `npm run validate` passes for all 11 games, the build passes (68 clips), and `node tools/e2e.mjs` passes (coach lock, clip decrypted, EN/ES pages).
+- **Not committed:** the in-progress `move-keeper` change in `tools/manager/manager.ts` and `docs/reference/`.
+- **Rollback:** revert 54381d1, remove the private game file, then run `npm run build` (prunes the clips from R2) and `manager.ts publish` (removes the game from the manager). Reverting ca79a09 brings back the build failure.
+
 ## 2026-10-22 — Publishing into NOLA DFC Manager (833ddac..833ddac)
 
 - **`tools/manager/manager.ts publish [--dry-run]`:** runs `validate.ts` first, then upserts `film_teams`, `film_games` (now with `content` = the game minus `coaches`, `highlights.source` blanked, plus score, opponent, time, home and the schedule match), `film_breakdowns`, `film_positions` (roster entries with `managerId`), `film_lineups` (names mapped to `managerId`; unmapped names kept and reported; `'*'` = default), `film_ollie_games` and `film_ollie_players`. Rows for games, lineups and Ollie games no longer in the files are deleted. Needs `nola-dfc-manager/sql/film_native_migration.sql`.

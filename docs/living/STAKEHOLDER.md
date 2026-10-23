@@ -2,6 +2,11 @@
 
 Plain-language notes on what changed on the team's game review site, newest first.
 
+## 2026-10-23 — 19 September game (ca79a09..54381d1)
+
+- The 19 September scrimmage against CFC (lost 1–4) is now on the site and in NOLA DFC Manager, with the play-by-play, match report, coaches' breakdown, unit review and five highlight clips, in English and Spanish.
+- The game also shows up on the 19 September entry in the manager's schedule.
+
 ## 2026-10-22 — Publishing into NOLA DFC Manager (833ddac..833ddac)
 
 - The season overview, game library, match reports and highlight clips now open inside NOLA DFC Manager, with no password. Everyone on the team can see them, and coaches also see the recurring themes and who played where.
