@@ -2,6 +2,20 @@
 
 Scope, decisions, risk and open items for each release, newest first.
 
+## 2026-10-23 — 19 September game (ca79a09..54381d1)
+
+**Delivered.**
+- **19 September game:** full write-up and five highlight clips for the CFC scrimmage, published to the site and to the manager and linked to its schedule entry.
+- **Build fixed:** the build had stopped working after the last release because of a missing type file for the clip uploader. That is now fixed.
+
+**Decisions.**
+- **Source was a YouTube upload** of the Reeplayer tape. Its chapter marks gave the kick-offs and water breaks. There was no events log, so the write-up is built from the video and Ollie's stats, as with the 29 August game.
+- **Coach confirmations:** the coach confirmed the DFC scorer's position (ST) and the 49th-minute goal, which the video could not settle.
+
+**Risk.** Low. Four of the five goals were at the far end of the field, so they are placed by the build-up and the restart rather than the finish.
+
+**Open.** Nothing new.
+
 ## 2026-10-22 — Publishing into NOLA DFC Manager (833ddac..833ddac)
 
 **Delivered.**
